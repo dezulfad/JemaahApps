@@ -13,6 +13,7 @@ googleAndroidLibrariesMapsplatformSecretsGradlePlugin = "2.0.1"
 playServicesMaps = "19.2.0"
 volley = "1.2.1"
 playServicesLocation = "21.3.0"
+firebaseFirestore = "26.0.2"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -26,6 +27,10 @@ firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version
 play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
 volley = { group = "com.android.volley", name = "volley", version.ref = "volley" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
+
+zxing-embedded = { group = "com.journeyapps", name = "zxing-android-embedded", version = "4.1.0" }
+zxing-core = { group = "com.google.zxing", name = "core", version = "3.4.1" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

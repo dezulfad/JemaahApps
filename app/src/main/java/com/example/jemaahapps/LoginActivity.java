@@ -17,6 +17,8 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -43,13 +45,37 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        // Check if user is already signed in
-        if (mAuth.getCurrentUser() != null) {
-            // User already logged in -> skip login
-            Intent intent = new Intent(LoginActivity.this, ProfileActivity.class);
-            startActivity(intent);
-            finish();
+
+        FirebaseUser fUser = mAuth.getCurrentUser();
+        if (fUser == null) {
+            // No one logged in yet -> stay on login screen
+            return;
         }
+
+        String uid = fUser.getUid();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        db.collection("users").document(uid).get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        String role = doc.getString("role");
+                        if ("admin".equals(role)) {
+                            startActivity(new Intent(LoginActivity.this, AdminActivity.class));
+                        } else {
+                            startActivity(new Intent(LoginActivity.this, ProfileActivity.class));
+                        }
+                        finish();
+                    } else {
+                        // No role stored -> treat as normal user
+                        startActivity(new Intent(LoginActivity.this, ProfileActivity.class));
+                        finish();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    // Optional: show error or stay on login
+                    Toast.makeText(LoginActivity.this,
+                            "Failed to load role", Toast.LENGTH_SHORT).show();
+                });
     }
 
     public void loginUser(View v) {
@@ -61,18 +87,48 @@ public class LoginActivity extends AppCompatActivity {
                     "Blank not allowed", Toast.LENGTH_SHORT).show();
         } else {
             mAuth.signInWithEmailAndPassword(email, password)
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            Toast.makeText(LoginActivity.this,
-                                    "User logged in successfully", Toast.LENGTH_SHORT).show();
-                            Intent i = new Intent(LoginActivity.this, ProfileActivity.class);
-                            startActivity(i);
-                            finish();
-                        } else {
-                            Toast.makeText(LoginActivity.this,
-                                    "User could not be login", Toast.LENGTH_SHORT).show();
+                    .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+                            if (task.isSuccessful()) {
+                                Toast.makeText(LoginActivity.this,
+                                        "User logged in successfully", Toast.LENGTH_SHORT).show();
+
+                                FirebaseUser fUser = mAuth.getCurrentUser();
+                                if (fUser == null) return;
+
+                                String uid = fUser.getUid();
+                                FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+                                db.collection("users").document(uid).get()
+                                        .addOnSuccessListener(doc -> {
+                                            if (doc.exists()) {
+                                                String role = doc.getString("role");
+                                                if ("admin".equals(role)) {
+                                                    startActivity(new Intent(LoginActivity.this, AdminActivity.class));
+                                                } else {
+                                                    startActivity(new Intent(LoginActivity.this, ProfileActivity.class));
+                                                }
+                                                finish();
+                                            } else {
+                                                // default if no role stored
+                                                startActivity(new Intent(LoginActivity.this, ProfileActivity.class));
+                                                finish();
+                                            }
+                                        })
+                                        .addOnFailureListener(e ->
+                                                Toast.makeText(LoginActivity.this,
+                                                        "Failed to load role", Toast.LENGTH_SHORT).show());
+                            } else {
+                                Toast.makeText(LoginActivity.this,
+                                        "User could not be login", Toast.LENGTH_SHORT).show();
+                            }
                         }
                     });
         }
+    }
+    public void goToRegister(View v) {
+        Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
+        startActivity(intent);
     }
 }

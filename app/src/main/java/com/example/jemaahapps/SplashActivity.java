@@ -22,7 +22,7 @@ public class SplashActivity extends Activity {
             Class<?> next = isLoggedIn ? MainActivity.class : LoginActivity.class;
             startActivity(new Intent(SplashActivity.this, next));
             finish();
-        }, 4000); // 4 seconds
+        }, 3000); // 3 seconds
     }
 
     private boolean isUserLoggedIn() {

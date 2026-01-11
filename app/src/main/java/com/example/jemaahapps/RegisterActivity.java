@@ -20,6 +20,11 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -43,9 +48,7 @@ public class RegisterActivity extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        // -------------------------------------
-        // SIMPLE EMAIL VALIDATION (live check)
-        // -------------------------------------
+        // Live email validation
         e1.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override
@@ -60,9 +63,7 @@ public class RegisterActivity extends AppCompatActivity {
             @Override public void afterTextChanged(Editable s) {}
         });
 
-        // -------------------------------------
-        // SIMPLE PASSWORD VALIDATION (live check)
-        // -------------------------------------
+        // Live password validation
         e2.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override
@@ -77,31 +78,31 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
 
-    public void createUser(View v){
+    public void createUser(View v) {
 
         String email = e1.getText().toString().trim();
         String password = e2.getText().toString().trim();
 
         // Final validation before register
-        if(email.isEmpty()){
+        if (email.isEmpty()) {
             e1.setError("Email cannot be empty");
             e1.requestFocus();
             return;
         }
 
-        if(!Patterns.EMAIL_ADDRESS.matcher(email).matches()){
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             e1.setError("Invalid email address");
             e1.requestFocus();
             return;
         }
 
-        if(password.isEmpty()){
+        if (password.isEmpty()) {
             e2.setError("Password cannot be empty");
             e2.requestFocus();
             return;
         }
 
-        if(password.length() < 6){
+        if (password.length() < 6) {
             e2.setError("Minimum 6 characters");
             e2.requestFocus();
             return;
@@ -112,12 +113,36 @@ public class RegisterActivity extends AppCompatActivity {
                 .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
-                        if(task.isSuccessful()){
-                            Toast.makeText(getApplicationContext(),"User created successfully",Toast.LENGTH_SHORT).show();
-                            startActivity(new Intent(getApplicationContext(), ProfileActivity.class));
-                            finish();
+                        if (task.isSuccessful()) {
+                            Toast.makeText(RegisterActivity.this,
+                                    "User registered successfully", Toast.LENGTH_SHORT).show();
+
+                            FirebaseUser fUser = mAuth.getCurrentUser();
+                            if (fUser == null) return;
+
+                            String uid = fUser.getUid();
+                            FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+                            // --- decide role here ---
+                            boolean isAdmin = email.endsWith("@admin.com"); // your own rule
+                            Map<String, Object> data = new HashMap<>();
+                            data.put("role", isAdmin ? "admin" : "user");
+                            // -------------------------
+
+                            db.collection("users").document(uid).set(data)
+                                    .addOnSuccessListener(unused -> {
+                                        // After saving role, go to login screen
+                                        Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+                                        startActivity(intent);
+                                        finish();
+                                    })
+                                    .addOnFailureListener(e ->
+                                            Toast.makeText(RegisterActivity.this,
+                                                    "Failed to save role", Toast.LENGTH_SHORT).show());
+
                         } else {
-                            Toast.makeText(getApplicationContext(),"Registration failed",Toast.LENGTH_SHORT).show();
+                            Toast.makeText(RegisterActivity.this,
+                                    "Registration failed", Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
