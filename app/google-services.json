@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "841399613136",
+    "project_id": "ict602-fc4d5",
+    "storage_bucket": "ict602-fc4d5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:841399613136:android:272d29911c8adc31ebd0d5",
+        "android_client_info": {
+          "package_name": "com.example.jemaahapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6aNw1k6GFWvmCjuaypmnBn3fAOb29Yrs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:841399613136:android:31f6225082b69139ebd0d5",
+        "android_client_info": {
+          "package_name": "com.example.jemaahapps"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6aNw1k6GFWvmCjuaypmnBn3fAOb29Yrs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
