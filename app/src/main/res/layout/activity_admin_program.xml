@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/admin_program_root"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <EditText
+            android:id="@+id/etProgramName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Program Name" />
+
+        <EditText
+            android:id="@+id/etProgramDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Select Date"
+            android:focusable="false"
+            android:clickable="true"
+            android:layout_marginTop="12dp" />
+
+        <EditText
+            android:id="@+id/etProgramTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Select Time"
+            android:focusable="false"
+            android:clickable="true"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/btnSaveProgram"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Save Program"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+</ScrollView>
