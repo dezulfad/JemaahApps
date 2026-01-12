@@ -20,6 +20,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FieldValue;
@@ -33,6 +34,7 @@ import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 import com.journeyapps.barcodescanner.CaptureActivity;
 
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,7 +43,7 @@ public class ProfileActivity extends AppCompatActivity {
     FirebaseAuth auth;
     FirebaseUser user;
     TextView profileText;
-    TextView tvUpcomingProgram;   // upcoming joined program text
+    TextView tvUpcomingProgram;
     Button openMap, cameraBtn, galleryBtn;
 
     ActivityResultLauncher<Intent> galleryLauncher =
@@ -66,7 +68,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
         profileText = findViewById(R.id.textView);
-        tvUpcomingProgram = findViewById(R.id.tvUpcomingProgram); // bind TextView
+        tvUpcomingProgram = findViewById(R.id.tvUpcomingProgram);
         openMap = findViewById(R.id.button);
         cameraBtn = findViewById(R.id.cameraBtn);
         galleryBtn = findViewById(R.id.galleryBtn);
@@ -110,37 +112,70 @@ public class ProfileActivity extends AppCompatActivity {
         galleryBtn.setOnClickListener(v -> selectImageFromGallery());
     }
 
-    // Get latest scanned program for this user
+    // 1) Get latest joined program from `scans`
+    // 2) Get its start time from `programs/{programName}` (admin-controlled)
     private void loadUpcomingProgram(String uid) {
         if (tvUpcomingProgram == null) return;
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+        // Step 1: latest scan for this user
         db.collection("scans")
                 .whereEqualTo("userId", uid)
                 .orderBy("scannedAt", Query.Direction.DESCENDING)
                 .limit(1)
                 .get()
-                .addOnSuccessListener(querySnapshot -> {
-                    if (!querySnapshot.isEmpty()) {
-                        String programName = querySnapshot
-                                .getDocuments()
-                                .get(0)
-                                .getString("programName");
-                        if (programName != null && !programName.isEmpty()) {
-                            tvUpcomingProgram.setText(programName);
-                        } else {
-                            tvUpcomingProgram.setText("No upcoming program");
-                        }
-                    } else {
+                .addOnSuccessListener(scanSnap -> {
+                    if (scanSnap.isEmpty()) {
                         tvUpcomingProgram.setText("No upcoming program");
+                        return;
                     }
+
+                    String programName = scanSnap
+                            .getDocuments()
+                            .get(0)
+                            .getString("programName");
+
+                    if (programName == null || programName.trim().isEmpty()) {
+                        tvUpcomingProgram.setText("No upcoming program");
+                        return;
+                    }
+
+                    // Step 2: program details from `programs` collection
+                    // assumes doc id in `programs` is exactly the programName (e.g. "Program F")
+                    db.collection("programs")
+                            .document(programName)
+                            .get()
+                            .addOnSuccessListener(programDoc -> {
+                                if (!programDoc.exists()) {
+                                    // no extra info, show name only
+                                    tvUpcomingProgram.setText(programName);
+                                    return;
+                                }
+
+                                // Try as Timestamp first
+                                Timestamp startTs = programDoc.getTimestamp("programStartTime");
+
+                                if (startTs != null) {
+                                    SimpleDateFormat sdf =
+                                            new SimpleDateFormat("dd/MM/yyyy HH:mm");
+                                    String timeStr = sdf.format(startTs.toDate());
+                                    tvUpcomingProgram.setText(programName + " - " + timeStr);
+                                } else {
+                                    // Or as plain string (if admin stored it that way)
+                                    String startStr = programDoc.getString("programStartTime");
+                                    if (startStr != null && !startStr.isEmpty()) {
+                                        tvUpcomingProgram.setText(programName + " - " + startStr);
+                                    } else {
+                                        tvUpcomingProgram.setText(programName);
+                                    }
+                                }
+                            })
+                            .addOnFailureListener(e ->
+                                    tvUpcomingProgram.setText("Failed to load program info"));
                 })
-                .addOnFailureListener(e -> {
-                    // Show exact error message to help debugging
-                    tvUpcomingProgram.setText("Failed to load program: " + e.getMessage());
-                    e.printStackTrace(); // check Logcat for full stack trace
-                });
+                .addOnFailureListener(e ->
+                        tvUpcomingProgram.setText("Failed to load joined program"));
     }
 
     public void openMap(View view) {
@@ -241,6 +276,7 @@ public class ProfileActivity extends AppCompatActivity {
                     scanData.put("name", fullName != null ? fullName : "");
                     scanData.put("phone", phone != null ? phone : "");
                     scanData.put("programName", programName);
+                    // Only scannedAt; programStartTime is stored in `programs` by admin
                     scanData.put("scannedAt", FieldValue.serverTimestamp());
 
                     String scanId = uid + "_" + programName;
