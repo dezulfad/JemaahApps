@@ -12,7 +12,8 @@
         android:layout_height="wrap_content"
         android:text="Scan result will appear here"
         android:textSize="18sp"
-        android:padding="16dp" />
+        android:padding="16dp"
+        android:gravity="center" />
 
     <Button
         android:id="@+id/backBtn"

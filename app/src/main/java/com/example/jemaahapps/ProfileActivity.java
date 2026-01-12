@@ -71,7 +71,20 @@ public class ProfileActivity extends AppCompatActivity {
         user = auth.getCurrentUser();
         if (profileText != null) {
             if (user != null) {
-                profileText.setText(user.getEmail());
+                String uid = user.getUid();
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+                db.collection("users").document(uid).get()
+                        .addOnSuccessListener(doc -> {
+                            String fullName = doc.getString("fullName");
+                            if (fullName != null && !fullName.isEmpty()) {
+                                profileText.setText(fullName);
+                            } else {
+                                profileText.setText(user.getEmail());
+                            }
+                        })
+                        .addOnFailureListener(e ->
+                                profileText.setText(user.getEmail()));
             } else {
                 profileText.setText("No user logged in");
             }

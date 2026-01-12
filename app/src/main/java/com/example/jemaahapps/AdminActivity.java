@@ -115,7 +115,17 @@ public class AdminActivity extends AppCompatActivity {
                     List<ScanRow> rows = new ArrayList<>();
                     for (Map.Entry<String, List<ScanItem>> entry : grouped.entrySet()) {
                         String program = entry.getKey();
-                        rows.add(ScanRow.header(program)); // header row
+                        int count = entry.getValue().size();
+
+                        // Build header label: "Program A - 10 people"
+                        String headerLabel;
+                        if (count == 1) {
+                            headerLabel = program + " - 1 person";
+                        } else {
+                            headerLabel = program + " - " + count + " people";
+                        }
+
+                        rows.add(ScanRow.header(headerLabel)); // header row with count
 
                         for (ScanItem si : entry.getValue()) {
                             rows.add(ScanRow.item(si.getName(), si.getPhone())); // child rows
