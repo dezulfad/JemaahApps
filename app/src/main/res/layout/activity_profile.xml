@@ -60,6 +60,7 @@
                 android:textSize="28sp"
                 android:textStyle="bold"
                 android:textColor="#F4D186"
+                android:layout_marginTop="8dp"
                 android:letterSpacing="0.08"
                 android:layout_gravity="center_horizontal" />
 
@@ -152,7 +153,8 @@
                 android:textColor="#F4D186"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:layout_marginTop="16dp" />
+                android:layout_marginTop="46dp"
+                android:gravity="center" />
 
             <TextView
                 android:id="@+id/tvUpcomingProgram"
@@ -161,7 +163,9 @@
                 android:text="No upcoming program"
                 android:textColor="#F4F4F4"
                 android:textSize="14sp"
-                android:layout_marginTop="4dp" />
+                android:gravity="center"
+                android:layout_marginTop="14dp" />
+
 
         </LinearLayout>
 
