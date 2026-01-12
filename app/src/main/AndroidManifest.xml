@@ -16,9 +16,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/uitm"
+        android:icon="@drawable/jemaahappslogo"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/uitm"
+        android:roundIcon="@drawable/jemaahappslogo"
         android:supportsRtl="true"
         android:theme="@style/Theme.JemaahApps"
         tools:targetApi="31">
@@ -47,7 +47,7 @@
         -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyDr64tr-Y3YopYDi7PmbUou96Q0o3wSYlI" />
+            android:value="AIzaSyA4Yx_Qb9ahUtib4ztEotP8aDqN9d18aLU" />
 
         <activity
             android:name=".MapsActivity"
