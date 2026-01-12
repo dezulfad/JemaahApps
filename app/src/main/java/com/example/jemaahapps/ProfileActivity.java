@@ -22,8 +22,9 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.MultiFormatReader;
 import com.google.zxing.Result;
@@ -40,6 +41,7 @@ public class ProfileActivity extends AppCompatActivity {
     FirebaseAuth auth;
     FirebaseUser user;
     TextView profileText;
+    TextView tvUpcomingProgram;   // upcoming joined program text
     Button openMap, cameraBtn, galleryBtn;
 
     ActivityResultLauncher<Intent> galleryLauncher =
@@ -64,6 +66,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
         profileText = findViewById(R.id.textView);
+        tvUpcomingProgram = findViewById(R.id.tvUpcomingProgram); // bind TextView
         openMap = findViewById(R.id.button);
         cameraBtn = findViewById(R.id.cameraBtn);
         galleryBtn = findViewById(R.id.galleryBtn);
@@ -74,6 +77,7 @@ public class ProfileActivity extends AppCompatActivity {
                 String uid = user.getUid();
                 FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+                // Load profile name
                 db.collection("users").document(uid).get()
                         .addOnSuccessListener(doc -> {
                             String fullName = doc.getString("fullName");
@@ -85,8 +89,15 @@ public class ProfileActivity extends AppCompatActivity {
                         })
                         .addOnFailureListener(e ->
                                 profileText.setText(user.getEmail()));
+
+                // Load upcoming / last joined program
+                loadUpcomingProgram(uid);
+
             } else {
                 profileText.setText("No user logged in");
+                if (tvUpcomingProgram != null) {
+                    tvUpcomingProgram.setText("No upcoming program");
+                }
             }
         }
 
@@ -97,6 +108,39 @@ public class ProfileActivity extends AppCompatActivity {
 
         cameraBtn.setOnClickListener(v -> startCameraScan());
         galleryBtn.setOnClickListener(v -> selectImageFromGallery());
+    }
+
+    // Get latest scanned program for this user
+    private void loadUpcomingProgram(String uid) {
+        if (tvUpcomingProgram == null) return;
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        db.collection("scans")
+                .whereEqualTo("userId", uid)
+                .orderBy("scannedAt", Query.Direction.DESCENDING)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        String programName = querySnapshot
+                                .getDocuments()
+                                .get(0)
+                                .getString("programName");
+                        if (programName != null && !programName.isEmpty()) {
+                            tvUpcomingProgram.setText(programName);
+                        } else {
+                            tvUpcomingProgram.setText("No upcoming program");
+                        }
+                    } else {
+                        tvUpcomingProgram.setText("No upcoming program");
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    // Show exact error message to help debugging
+                    tvUpcomingProgram.setText("Failed to load program: " + e.getMessage());
+                    e.printStackTrace(); // check Logcat for full stack trace
+                });
     }
 
     public void openMap(View view) {

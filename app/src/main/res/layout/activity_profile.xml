@@ -30,9 +30,7 @@
             android:textColor="@android:color/white"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:gravity="center_horizontal"/>
-
-
+            android:gravity="center_horizontal" />
     </LinearLayout>
 
     <!-- Profile card -->
@@ -97,6 +95,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
+            <!-- Search nearby mosque -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button"
                 style="@style/Widget.MaterialComponents.Button"
@@ -112,6 +111,7 @@
                 android:textColor="@android:color/white"
                 android:backgroundTint="#0E8060" />
 
+            <!-- Scan via camera -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/cameraBtn"
                 style="@style/Widget.MaterialComponents.Button"
@@ -127,6 +127,7 @@
                 android:textColor="@android:color/white"
                 android:backgroundTint="#146F8C" />
 
+            <!-- Scan via gallery -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/galleryBtn"
                 style="@style/Widget.MaterialComponents.Button"
@@ -141,6 +142,26 @@
                 android:layout_marginTop="8dp"
                 android:textColor="@android:color/white"
                 android:backgroundTint="#146F8C" />
+
+            <!-- Upcoming joined program -->
+            <TextView
+                android:id="@+id/tvUpcomingTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Upcoming joined program"
+                android:textColor="#F4D186"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginTop="16dp" />
+
+            <TextView
+                android:id="@+id/tvUpcomingProgram"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No upcoming program"
+                android:textColor="#F4F4F4"
+                android:textSize="14sp"
+                android:layout_marginTop="4dp" />
 
         </LinearLayout>
 
