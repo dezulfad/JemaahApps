@@ -22,6 +22,8 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FieldValue;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.MultiFormatReader;
 import com.google.zxing.Result;
@@ -29,6 +31,9 @@ import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 import com.journeyapps.barcodescanner.CaptureActivity;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -135,8 +140,37 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     void openResultActivity(String content) {
+        String programName = content; // QR text = programme name
+
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            String uid = currentUser.getUid();
+            FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+            // Read user's fullName & phone from users/{uid}
+            db.collection("users").document(uid).get()
+                    .addOnSuccessListener(doc -> {
+                        String fullName = doc.getString("fullName");
+                        String phone = doc.getString("phone");
+
+                        Map<String, Object> scanData = new HashMap<>();
+                        scanData.put("userId", uid);
+                        scanData.put("name", fullName != null ? fullName : "");
+                        scanData.put("phone", phone != null ? phone : "");
+                        scanData.put("programName", programName);
+                        scanData.put("scannedAt", FieldValue.serverTimestamp());
+
+                        // THIS LINE creates the 'scans' collection and a new document
+                        db.collection("scans").add(scanData);
+                    })
+                    .addOnFailureListener(e ->
+                            Toast.makeText(this,
+                                    "Failed to load user profile", Toast.LENGTH_SHORT).show());
+        }
+
+        // Optional: show result screen
         Intent intent = new Intent(this, ResultActivity.class);
-        intent.putExtra("result", content);
+        intent.putExtra("result", programName);
         startActivity(intent);
     }
 }

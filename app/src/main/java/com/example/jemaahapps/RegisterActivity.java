@@ -28,7 +28,7 @@ import java.util.Map;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    EditText e1, e2;
+    EditText e1, e2, etFullName, etPhone;
     FirebaseAuth mAuth;
 
     @Override
@@ -36,6 +36,11 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_register);
+
+        etFullName = findViewById(R.id.etFullName);
+        etPhone = findViewById(R.id.etPhone);
+        e1 = findViewById(R.id.editText);   // email
+        e2 = findViewById(R.id.editText2);  // password
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -80,10 +85,24 @@ public class RegisterActivity extends AppCompatActivity {
 
     public void createUser(View v) {
 
+        String fullName = etFullName.getText().toString().trim();
+        String phone = etPhone.getText().toString().trim();
         String email = e1.getText().toString().trim();
         String password = e2.getText().toString().trim();
 
         // Final validation before register
+        if (fullName.isEmpty()) {
+            etFullName.setError("Full name cannot be empty");
+            etFullName.requestFocus();
+            return;
+        }
+
+        if (phone.isEmpty()) {
+            etPhone.setError("Phone cannot be empty");
+            etPhone.requestFocus();
+            return;
+        }
+
         if (email.isEmpty()) {
             e1.setError("Email cannot be empty");
             e1.requestFocus();
@@ -123,22 +142,22 @@ public class RegisterActivity extends AppCompatActivity {
                             String uid = fUser.getUid();
                             FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-                            // --- decide role here ---
-                            boolean isAdmin = email.endsWith("@admin.com"); // your own rule
+                            // decide role
+                            boolean isAdmin = email.endsWith("@admin.com");
                             Map<String, Object> data = new HashMap<>();
+                            data.put("fullName", fullName);
+                            data.put("phone", phone);
                             data.put("role", isAdmin ? "admin" : "user");
-                            // -------------------------
 
                             db.collection("users").document(uid).set(data)
                                     .addOnSuccessListener(unused -> {
-                                        // After saving role, go to login screen
                                         Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
                                         startActivity(intent);
                                         finish();
                                     })
                                     .addOnFailureListener(e ->
                                             Toast.makeText(RegisterActivity.this,
-                                                    "Failed to save role", Toast.LENGTH_SHORT).show());
+                                                    "Failed to save profile", Toast.LENGTH_SHORT).show());
 
                         } else {
                             Toast.makeText(RegisterActivity.this,
@@ -146,6 +165,5 @@ public class RegisterActivity extends AppCompatActivity {
                         }
                     }
                 });
-
     }
 }
