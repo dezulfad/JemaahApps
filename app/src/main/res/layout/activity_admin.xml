@@ -58,7 +58,7 @@
         android:id="@+id/tvAdminTitle"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="Scans List"
+        android:text="List Of Name"
         android:textColor="#F4D186"
         android:textSize="18sp"
         android:textStyle="bold"
@@ -68,7 +68,7 @@
         app:layout_constraintTop_toBottomOf="@id/rvPrograms"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
-    
+
     <!-- Scans list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvScans"
