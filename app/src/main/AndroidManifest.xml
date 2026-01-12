@@ -25,6 +25,9 @@
         <activity
             android:name=".ResultActivity"
             android:exported="false" />
+
+        <activity android:name=".AdminProgramActivity" />
+
         <activity
             android:name=".AdminActivity"
             android:exported="false" />
