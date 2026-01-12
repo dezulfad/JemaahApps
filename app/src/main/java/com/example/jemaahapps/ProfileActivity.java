@@ -42,7 +42,6 @@ public class ProfileActivity extends AppCompatActivity {
     TextView profileText;
     Button openMap, cameraBtn, galleryBtn;
 
-    // Gallery launcher for QR decode
     ActivityResultLauncher<Intent> galleryLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
                     result -> {
@@ -78,13 +77,11 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
 
-        // Request permissions for camera & gallery
         ActivityCompat.requestPermissions(this, new String[]{
                 Manifest.permission.CAMERA,
                 Manifest.permission.READ_EXTERNAL_STORAGE
         }, 1);
 
-        // QR button listeners
         cameraBtn.setOnClickListener(v -> startCameraScan());
         galleryBtn.setOnClickListener(v -> selectImageFromGallery());
     }
@@ -100,8 +97,6 @@ public class ProfileActivity extends AppCompatActivity {
         startActivity(i);
         finish();
     }
-
-    // ---------- QR / BARCODE methods ----------
 
     void startCameraScan() {
         IntentIntegrator integrator = new IntentIntegrator(this);
@@ -120,10 +115,32 @@ public class ProfileActivity extends AppCompatActivity {
     void decodeFromGallery(Uri uri) {
         try {
             Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), uri);
-            BinaryBitmap binaryBitmap =
-                    new BinaryBitmap(new HybridBinarizer(new BitmapLuminanceSource(bitmap)));
-            Result result = new MultiFormatReader().decode(binaryBitmap);
+            if (bitmap == null) {
+                Toast.makeText(this, "Image is not valid", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            int width = bitmap.getWidth();
+            int height = bitmap.getHeight();
+            int[] pixels = new int[width * height];
+            bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+
+            com.google.zxing.RGBLuminanceSource source =
+                    new com.google.zxing.RGBLuminanceSource(width, height, pixels);
+            BinaryBitmap binaryBitmap = new BinaryBitmap(new HybridBinarizer(source));
+
+            MultiFormatReader reader = new MultiFormatReader();
+
+            Map<com.google.zxing.DecodeHintType, Object> hints = new java.util.HashMap<>();
+            hints.put(com.google.zxing.DecodeHintType.TRY_HARDER, Boolean.TRUE);
+            hints.put(com.google.zxing.DecodeHintType.POSSIBLE_FORMATS,
+                    java.util.Collections.singletonList(com.google.zxing.BarcodeFormat.QR_CODE));
+            reader.setHints(hints);
+
+            Result result = reader.decodeWithState(binaryBitmap);
+
             openResultActivity(result.getText());
+
         } catch (Exception e) {
             Toast.makeText(this, "Failed to decode QR code", Toast.LENGTH_SHORT).show();
         }
@@ -140,35 +157,68 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     void openResultActivity(String content) {
-        String programName = content; // QR text = programme name
-
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser != null) {
-            String uid = currentUser.getUid();
-            FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-            // Read user's fullName & phone from users/{uid}
-            db.collection("users").document(uid).get()
-                    .addOnSuccessListener(doc -> {
-                        String fullName = doc.getString("fullName");
-                        String phone = doc.getString("phone");
-
-                        Map<String, Object> scanData = new HashMap<>();
-                        scanData.put("userId", uid);
-                        scanData.put("name", fullName != null ? fullName : "");
-                        scanData.put("phone", phone != null ? phone : "");
-                        scanData.put("programName", programName);
-                        scanData.put("scannedAt", FieldValue.serverTimestamp());
-
-                        // THIS LINE creates the 'scans' collection and a new document
-                        db.collection("scans").add(scanData);
-                    })
-                    .addOnFailureListener(e ->
-                            Toast.makeText(this,
-                                    "Failed to load user profile", Toast.LENGTH_SHORT).show());
+        String programName = content != null ? content.trim() : "";
+        if (programName.isEmpty()) {
+            Toast.makeText(this, "Invalid QR content", Toast.LENGTH_SHORT).show();
+            return;
         }
 
-        // Optional: show result screen
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(this,
+                    "You must be logged in to scan.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        String uid = currentUser.getUid();
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        db.collection("users").document(uid).get()
+                .addOnSuccessListener(doc -> {
+                    String fullName = doc.getString("fullName");
+                    String phone = doc.getString("phone");
+
+                    Map<String, Object> scanData = new HashMap<>();
+                    scanData.put("userId", uid);
+                    scanData.put("name", fullName != null ? fullName : "");
+                    scanData.put("phone", phone != null ? phone : "");
+                    scanData.put("programName", programName);
+                    scanData.put("scannedAt", FieldValue.serverTimestamp());
+
+                    String scanId = uid + "_" + programName;
+
+                    db.collection("scans")
+                            .document(scanId)
+                            .get()
+                            .addOnSuccessListener(existing -> {
+                                if (existing.exists()) {
+                                    Toast.makeText(this,
+                                            "You has already scan this program QR before",
+                                            Toast.LENGTH_LONG).show();
+                                } else {
+                                    db.collection("scans")
+                                            .document(scanId)
+                                            .set(scanData)
+                                            .addOnSuccessListener(unused ->
+                                                    Toast.makeText(this,
+                                                            "Scan saved for " + programName,
+                                                            Toast.LENGTH_SHORT).show())
+                                            .addOnFailureListener(e ->
+                                                    Toast.makeText(this,
+                                                            "Failed to save scan: " + e.getMessage(),
+                                                            Toast.LENGTH_LONG).show());
+                                }
+                            })
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(this,
+                                            "Error checking scan: " + e.getMessage(),
+                                            Toast.LENGTH_LONG).show());
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this,
+                                "Failed to load user profile", Toast.LENGTH_SHORT).show());
+
         Intent intent = new Intent(this, ResultActivity.class);
         intent.putExtra("result", programName);
         startActivity(intent);
