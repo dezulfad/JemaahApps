@@ -2,6 +2,7 @@ package com.example.jemaahapps;
 
 import android.Manifest;
 import android.app.AlarmManager;
+import android.app.DatePickerDialog;
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.Intent;
@@ -11,20 +12,16 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.core.content.ContextCompat;
 
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -47,7 +44,7 @@ import java.util.Map;
 
 public class ProfileActivity extends AppCompatActivity {
 
-    private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1001;
+    private static final int REQUEST_CODE_POST_NOTIFICATIONS = 101;
 
     FirebaseAuth auth;
     FirebaseUser user;
@@ -67,13 +64,7 @@ public class ProfileActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_profile);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
 
         auth = FirebaseAuth.getInstance();
         profileText = findViewById(R.id.textView);
@@ -113,8 +104,21 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
 
-        // Request necessary permissions, including notification permission for Android 13+
-        requestAppPermissions();
+        // Request permissions
+        ActivityCompat.requestPermissions(this, new String[]{
+                Manifest.permission.CAMERA,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+        }, 1);
+
+        // Check notification permission for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        REQUEST_CODE_POST_NOTIFICATIONS);
+            }
+        }
 
         cameraBtn.setOnClickListener(v -> startCameraScan());
         galleryBtn.setOnClickListener(v -> selectImageFromGallery());
@@ -124,49 +128,16 @@ public class ProfileActivity extends AppCompatActivity {
             if (upcomingProgram == null || upcomingProgram.equals("No upcoming program")) {
                 Toast.makeText(this, "No upcoming program to set reminder for", Toast.LENGTH_SHORT).show();
             } else {
-                showTimePickerDialog(upcomingProgram);
+                showDateTimePickerDialog(upcomingProgram);
             }
         });
     }
 
-    private void requestAppPermissions() {
-        // Permissions to request
-        String[] permissions = {
-                Manifest.permission.CAMERA,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-        };
-
-        // Request CAMERA and READ_EXTERNAL_STORAGE always
-        ActivityCompat.requestPermissions(this, permissions, 1);
-
-        // Request POST_NOTIFICATIONS on Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST_CODE);
-            }
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Notification permission granted", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Notification permission denied. You won't receive reminders.", Toast.LENGTH_LONG).show();
-            }
-        }
-    }
-
-    // 1) Get latest joined program from `scans`
-    // 2) Get its start time from `programs/{programName}` (admin-controlled)
     private void loadUpcomingProgram(String uid) {
         if (tvUpcomingProgram == null) return;
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        // Step 1: latest scan for this user
         db.collection("scans")
                 .whereEqualTo("userId", uid)
                 .orderBy("scannedAt", Query.Direction.DESCENDING)
@@ -175,7 +146,7 @@ public class ProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(scanSnap -> {
                     if (scanSnap.isEmpty()) {
                         tvUpcomingProgram.setText("No upcoming program");
-                        btnSetReminder.setVisibility(View.GONE);
+                        btnSetReminder.setVisibility(Button.GONE);
                         return;
                     }
 
@@ -186,18 +157,17 @@ public class ProfileActivity extends AppCompatActivity {
 
                     if (programName == null || programName.trim().isEmpty()) {
                         tvUpcomingProgram.setText("No upcoming program");
-                        btnSetReminder.setVisibility(View.GONE);
+                        btnSetReminder.setVisibility(Button.GONE);
                         return;
                     }
 
-                    // Step 2: program details from `programs` collection
                     db.collection("programs")
                             .document(programName)
                             .get()
                             .addOnSuccessListener(programDoc -> {
                                 if (!programDoc.exists()) {
                                     tvUpcomingProgram.setText(programName);
-                                    btnSetReminder.setVisibility(View.VISIBLE);
+                                    btnSetReminder.setVisibility(Button.VISIBLE);
                                     return;
                                 }
 
@@ -207,35 +177,35 @@ public class ProfileActivity extends AppCompatActivity {
                                     SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
                                     String timeStr = sdf.format(startTs.toDate());
                                     tvUpcomingProgram.setText(programName + " - " + timeStr);
-                                    btnSetReminder.setVisibility(View.VISIBLE);
+                                    btnSetReminder.setVisibility(Button.VISIBLE);
                                 } else {
                                     String startStr = programDoc.getString("programStartTime");
                                     if (startStr != null && !startStr.isEmpty()) {
                                         tvUpcomingProgram.setText(programName + " - " + startStr);
-                                        btnSetReminder.setVisibility(View.VISIBLE);
+                                        btnSetReminder.setVisibility(Button.VISIBLE);
                                     } else {
                                         tvUpcomingProgram.setText(programName);
-                                        btnSetReminder.setVisibility(View.VISIBLE);
+                                        btnSetReminder.setVisibility(Button.VISIBLE);
                                     }
                                 }
                             })
                             .addOnFailureListener(e -> {
                                 tvUpcomingProgram.setText("Failed to load program info");
-                                btnSetReminder.setVisibility(View.GONE);
+                                btnSetReminder.setVisibility(Button.GONE);
                             });
                 })
                 .addOnFailureListener(e -> {
                     tvUpcomingProgram.setText("Failed to load joined program");
-                    btnSetReminder.setVisibility(View.GONE);
+                    btnSetReminder.setVisibility(Button.GONE);
                 });
     }
 
-    public void openMap(View view) {
+    public void openMap(android.view.View view) {
         Intent intent = new Intent(ProfileActivity.this, MapsActivity.class);
         startActivity(intent);
     }
 
-    public void signout(View v) {
+    public void signout(android.view.View v) {
         auth.signOut();
         Intent i = new Intent(this, LoginActivity.class);
         startActivity(i);
@@ -368,41 +338,52 @@ public class ProfileActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    // Show time picker dialog and then schedule alarm
-    private void showTimePickerDialog(String programName) {
-        Calendar now = Calendar.getInstance();
-        int hour = now.get(Calendar.HOUR_OF_DAY);
-        int minute = now.get(Calendar.MINUTE);
+    // Show date picker, then time picker, then schedule alarm
+    private void showDateTimePickerDialog(String programName) {
+        final Calendar currentDate = Calendar.getInstance();
+        final Calendar selectedDate = Calendar.getInstance();
 
-        TimePickerDialog timePickerDialog = new TimePickerDialog(
-                this,
-                (TimePicker view, int hourOfDay, int minute1) -> {
-                    scheduleAlarm(hourOfDay, minute1, programName);
+        DatePickerDialog datePickerDialog = new DatePickerDialog(this,
+                (view, year, month, dayOfMonth) -> {
+                    selectedDate.set(Calendar.YEAR, year);
+                    selectedDate.set(Calendar.MONTH, month);
+                    selectedDate.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+                    int hour = currentDate.get(Calendar.HOUR_OF_DAY);
+                    int minute = currentDate.get(Calendar.MINUTE);
+
+                    TimePickerDialog timePickerDialog = new TimePickerDialog(
+                            ProfileActivity.this,
+                            (TimePicker timePicker, int hourOfDay, int minute1) -> {
+                                selectedDate.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                                selectedDate.set(Calendar.MINUTE, minute1);
+                                selectedDate.set(Calendar.SECOND, 0);
+                                selectedDate.set(Calendar.MILLISECOND, 0);
+
+                                // If selected time is in the past, schedule for next day
+                                if (selectedDate.getTimeInMillis() <= System.currentTimeMillis()) {
+                                    selectedDate.add(Calendar.DAY_OF_YEAR, 1);
+                                }
+
+                                scheduleAlarm(selectedDate, programName);
+                            },
+                            hour,
+                            minute,
+                            true);
+
+                    timePickerDialog.show();
                 },
-                hour,
-                minute,
-                true);
+                currentDate.get(Calendar.YEAR),
+                currentDate.get(Calendar.MONTH),
+                currentDate.get(Calendar.DAY_OF_MONTH));
 
-        timePickerDialog.show();
+        datePickerDialog.show();
     }
 
-    // Schedule alarm with unique requestCode based on programName hashCode
-    private void scheduleAlarm(int hourOfDay, int minute, String programName) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
-        calendar.set(Calendar.MINUTE, minute);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-
-        // If the time is before now, schedule for next day
-        if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
-            calendar.add(Calendar.DAY_OF_YEAR, 1);
-        }
-
+    private void scheduleAlarm(Calendar calendar, String programName) {
         Intent intent = new Intent(this, AlarmReceiver.class);
         intent.putExtra("programName", programName);
 
-        // Use programName hashCode as unique requestCode to allow multiple alarms
         int requestCode = programName.hashCode();
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
@@ -413,7 +394,24 @@ public class ProfileActivity extends AppCompatActivity {
             alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
 
-            Toast.makeText(this, "Reminder set for " + String.format("%02d:%02d", hourOfDay, minute), Toast.LENGTH_SHORT).show();
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+            Toast.makeText(this, "Reminder set for " + sdf.format(calendar.getTime()), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // Handle permission result (including notification permission)
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String[] permissions,
+                                           int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_CODE_POST_NOTIFICATIONS) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Notification permission granted", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Notification permission denied. You may miss reminders.", Toast.LENGTH_LONG).show();
+            }
         }
     }
 }
