@@ -39,17 +39,14 @@ public class RegisterActivity extends AppCompatActivity {
 
         etFullName = findViewById(R.id.etFullName);
         etPhone = findViewById(R.id.etPhone);
-        e1 = findViewById(R.id.editText);   // email
-        e2 = findViewById(R.id.editText2);  // password
+        e1 = findViewById(R.id.editText);   // Email
+        e2 = findViewById(R.id.editText2);  // Password
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-
-        e1 = findViewById(R.id.editText);   // Email
-        e2 = findViewById(R.id.editText2);  // Password
 
         mAuth = FirebaseAuth.getInstance();
 
@@ -58,8 +55,7 @@ public class RegisterActivity extends AppCompatActivity {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String email = s.toString();
-                if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                if (!Patterns.EMAIL_ADDRESS.matcher(s.toString()).matches()) {
                     e1.setError("Invalid email address");
                 } else {
                     e1.setError(null);
@@ -90,7 +86,7 @@ public class RegisterActivity extends AppCompatActivity {
         String email = e1.getText().toString().trim();
         String password = e2.getText().toString().trim();
 
-        // Final validation before register
+        // Validation
         if (fullName.isEmpty()) {
             etFullName.setError("Full name cannot be empty");
             etFullName.requestFocus();
@@ -103,38 +99,24 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        if (email.isEmpty()) {
-            e1.setError("Email cannot be empty");
-            e1.requestFocus();
-            return;
-        }
-
-        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+        if (email.isEmpty() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             e1.setError("Invalid email address");
             e1.requestFocus();
             return;
         }
 
-        if (password.isEmpty()) {
-            e2.setError("Password cannot be empty");
-            e2.requestFocus();
-            return;
-        }
-
-        if (password.length() < 6) {
+        if (password.isEmpty() || password.length() < 6) {
             e2.setError("Minimum 6 characters");
             e2.requestFocus();
             return;
         }
 
-        // Firebase create user
+        // Create Firebase Auth user
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         if (task.isSuccessful()) {
-                            Toast.makeText(RegisterActivity.this,
-                                    "User registered successfully", Toast.LENGTH_SHORT).show();
 
                             FirebaseUser fUser = mAuth.getCurrentUser();
                             if (fUser == null) return;
@@ -142,17 +124,21 @@ public class RegisterActivity extends AppCompatActivity {
                             String uid = fUser.getUid();
                             FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-                            // decide role
                             boolean isAdmin = email.endsWith("@admin.com");
+
+                            //  SAVE EMAIL on firebase
                             Map<String, Object> data = new HashMap<>();
                             data.put("fullName", fullName);
                             data.put("phone", phone);
+                            data.put("email", email); // ✅ NEW
                             data.put("role", isAdmin ? "admin" : "user");
 
-                            db.collection("users").document(uid).set(data)
+                            db.collection("users").document(uid)
+                                    .set(data)
                                     .addOnSuccessListener(unused -> {
-                                        Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
-                                        startActivity(intent);
+                                        Toast.makeText(RegisterActivity.this,
+                                                "Registration successful", Toast.LENGTH_SHORT).show();
+                                        startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
                                         finish();
                                     })
                                     .addOnFailureListener(e ->
@@ -161,7 +147,8 @@ public class RegisterActivity extends AppCompatActivity {
 
                         } else {
                             Toast.makeText(RegisterActivity.this,
-                                    "Registration failed", Toast.LENGTH_SHORT).show();
+                                    "Registration failed: " + task.getException().getMessage(),
+                                    Toast.LENGTH_SHORT).show();
                         }
                     }
                 });
