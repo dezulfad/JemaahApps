@@ -4,9 +4,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
-import android.webkit.URLUtil;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,23 +17,14 @@ import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.text.DateFormat;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * ResultActivity displays the scanned result (QR/barcode content) from MainActivity.
- * If the result is a valid URL, the user can open it in a browser.
- * Also provides a button to return back to MainActivity.
- * Additionally, when the QR encodes a program name, this activity:
- *  - loads the program from Firestore (/programs/{programName})
- *  - ensures the user can only join once per program
- *  - schedules a reminder 60 minutes before programStartTime.
- */
 public class ResultActivity extends AppCompatActivity {
 
-    TextView resultText;         // Displays scanned result content
-    Button openBrowserBtn;       // Button to open content in browser if it’s a valid URL
-    Button backBtn;              // Button to go back to MainActivity
+    TextView resultText;
+    Button backBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,42 +32,39 @@ public class ResultActivity extends AppCompatActivity {
         setContentView(R.layout.activity_result);
 
         resultText = findViewById(R.id.resultText);
-        //openBrowserBtn = findViewById(R.id.openBrowserBtn);
         backBtn = findViewById(R.id.backBtn);
 
-        // Get the scanned result passed from MainActivity
         String contentRaw = getIntent().getStringExtra("result");
-        String content = contentRaw != null ? contentRaw.trim() : "";
+        String programName = contentRaw != null ? contentRaw.trim() : "";
 
-        // Display the scanned content
-        resultText.setText("You have successfully joined " + content);
+        if (programName.isEmpty()) {
+            Toast.makeText(this, "Invalid QR code", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
 
-        Toast.makeText(this, "QR content: " + content, Toast.LENGTH_LONG).show();
+        resultText.setText("Scanning program: " + programName);
 
-        // Assume QR content is a programName (and document ID == programName)
-        loadProgramAndHandleJoin(content);
+        loadProgramAndHandleJoin(programName);
 
         backBtn.setOnClickListener(v -> finish());
     }
 
     /**
-     * Loads program document from Firestore using the scanned content as programName
-     * then enforces one-join-per-user and schedules a reminder.
+     * Load program document using program name from QR
      */
-    private void loadProgramAndHandleJoin(String programNameFromQR) {
-        if (programNameFromQR == null || programNameFromQR.isEmpty()) return;
-
+    private void loadProgramAndHandleJoin(String programName) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         db.collection("programs")
-                .document(programNameFromQR)
+                .document(programName)
                 .get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
-                        handleProgramDocument(programNameFromQR, doc);
+                        handleProgramDocument(programName, doc);
                     } else {
                         Toast.makeText(this,
-                                "No program found for: " + programNameFromQR,
+                                "No program found for: " + programName,
                                 Toast.LENGTH_LONG).show();
                     }
                 })
@@ -88,12 +74,11 @@ public class ResultActivity extends AppCompatActivity {
                                 Toast.LENGTH_LONG).show());
     }
 
+    /**
+     * Validate program time and block past programs
+     */
     private void handleProgramDocument(String programName, DocumentSnapshot doc) {
-        if (doc == null || !doc.exists()) return;
-
         Timestamp ts = doc.getTimestamp("programStartTime");
-
-        Toast.makeText(this, "Loaded " + programName, Toast.LENGTH_SHORT).show();
 
         if (ts == null) {
             Toast.makeText(this,
@@ -103,20 +88,30 @@ public class ResultActivity extends AppCompatActivity {
         }
 
         long startMillis = ts.toDate().getTime();
+        long now = System.currentTimeMillis();
 
-        // Enforce: user can join only once per program
+        // 🚫 BLOCK PAST PROGRAMS
+        if (startMillis < now) {
+            String endedAt = DateFormat.getDateTimeInstance().format(ts.toDate());
+            Toast.makeText(this,
+                    "This program has already ended.\nEnded on: " + endedAt,
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // ✅ Program is valid
         joinProgramOnce(programName, startMillis);
     }
 
     /**
-     * Creates one attendance document per user+program (userUid_programName).
-     * If it already exists, user cannot join again and no new reminder is scheduled.
+     * Ensure user joins only once per program
      */
     private void joinProgramOnce(String programName, long startMillis) {
         FirebaseAuth auth = FirebaseAuth.getInstance();
+
         if (auth.getCurrentUser() == null) {
             Toast.makeText(this,
-                    "You must be logged in to join the program.",
+                    "You must be logged in to join a program.",
                     Toast.LENGTH_LONG).show();
             return;
         }
@@ -129,12 +124,10 @@ public class ResultActivity extends AppCompatActivity {
 
         ref.get().addOnSuccessListener(existing -> {
             if (existing.exists()) {
-                // Already joined
                 Toast.makeText(this,
-                        "You has already scan this program QR before",
+                        "You have already joined this program.",
                         Toast.LENGTH_LONG).show();
             } else {
-                // First time: create attendance + schedule reminder
                 Map<String, Object> data = new HashMap<>();
                 data.put("userId", uid);
                 data.put("programName", programName);
@@ -143,33 +136,33 @@ public class ResultActivity extends AppCompatActivity {
                 ref.set(data)
                         .addOnSuccessListener(unused -> {
                             Toast.makeText(this,
-                                    "Joined " + programName,
+                                    "Successfully joined " + programName,
                                     Toast.LENGTH_SHORT).show();
                             scheduleProgramReminder(this, programName, startMillis);
                         })
                         .addOnFailureListener(e ->
                                 Toast.makeText(this,
-                                        "Failed to join: " + e.getMessage(),
+                                        "Failed to join program.",
                                         Toast.LENGTH_LONG).show());
             }
         });
     }
 
+    /**
+     * Schedule reminder 60 minutes before program start
+     */
     private void scheduleProgramReminder(Context context, String programName, long startMillis) {
-        // 60 minutes before programStartTime
         long triggerAtMillis = startMillis - 60 * 60 * 1000L;
 
         if (triggerAtMillis <= System.currentTimeMillis()) {
-            // already less than 60 minutes before start
             Toast.makeText(context,
-                    "Program is starting soon; no 60-minute reminder scheduled.",
+                    "Program starts soon. No reminder scheduled.",
                     Toast.LENGTH_LONG).show();
             return;
         }
 
         Intent intent = new Intent(context, AlarmReceiver.class);
-        intent.putExtra("msg",
-                "Your program \"" + programName + "\" begins in 60 minutes.");
+        intent.putExtra("programName", programName);
 
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 context,
@@ -180,6 +173,7 @@ public class ResultActivity extends AppCompatActivity {
 
         AlarmManager alarmManager =
                 (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+
         if (alarmManager != null) {
             alarmManager.set(
                     AlarmManager.RTC_WAKEUP,
