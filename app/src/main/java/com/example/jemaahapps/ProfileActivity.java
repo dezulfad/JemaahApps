@@ -1,14 +1,20 @@
 package com.example.jemaahapps;
 
 import android.Manifest;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.app.TimePickerDialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.TimePicker;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -35,16 +41,19 @@ import com.google.zxing.integration.android.IntentResult;
 import com.journeyapps.barcodescanner.CaptureActivity;
 
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ProfileActivity extends AppCompatActivity {
 
+    private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1001;
+
     FirebaseAuth auth;
     FirebaseUser user;
     TextView profileText;
     TextView tvUpcomingProgram;
-    Button openMap, cameraBtn, galleryBtn;
+    Button openMap, cameraBtn, galleryBtn, btnSetReminder;
 
     ActivityResultLauncher<Intent> galleryLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
@@ -72,6 +81,7 @@ public class ProfileActivity extends AppCompatActivity {
         openMap = findViewById(R.id.button);
         cameraBtn = findViewById(R.id.cameraBtn);
         galleryBtn = findViewById(R.id.galleryBtn);
+        btnSetReminder = findViewById(R.id.btnSetReminder);
 
         user = auth.getCurrentUser();
         if (profileText != null) {
@@ -103,13 +113,50 @@ public class ProfileActivity extends AppCompatActivity {
             }
         }
 
-        ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.CAMERA,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-        }, 1);
+        // Request necessary permissions, including notification permission for Android 13+
+        requestAppPermissions();
 
         cameraBtn.setOnClickListener(v -> startCameraScan());
         galleryBtn.setOnClickListener(v -> selectImageFromGallery());
+
+        btnSetReminder.setOnClickListener(v -> {
+            String upcomingProgram = tvUpcomingProgram.getText().toString();
+            if (upcomingProgram == null || upcomingProgram.equals("No upcoming program")) {
+                Toast.makeText(this, "No upcoming program to set reminder for", Toast.LENGTH_SHORT).show();
+            } else {
+                showTimePickerDialog(upcomingProgram);
+            }
+        });
+    }
+
+    private void requestAppPermissions() {
+        // Permissions to request
+        String[] permissions = {
+                Manifest.permission.CAMERA,
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+        };
+
+        // Request CAMERA and READ_EXTERNAL_STORAGE always
+        ActivityCompat.requestPermissions(this, permissions, 1);
+
+        // Request POST_NOTIFICATIONS on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_REQUEST_CODE);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Notification permission granted", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Notification permission denied. You won't receive reminders.", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     // 1) Get latest joined program from `scans`
@@ -128,6 +175,7 @@ public class ProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(scanSnap -> {
                     if (scanSnap.isEmpty()) {
                         tvUpcomingProgram.setText("No upcoming program");
+                        btnSetReminder.setVisibility(View.GONE);
                         return;
                     }
 
@@ -138,44 +186,48 @@ public class ProfileActivity extends AppCompatActivity {
 
                     if (programName == null || programName.trim().isEmpty()) {
                         tvUpcomingProgram.setText("No upcoming program");
+                        btnSetReminder.setVisibility(View.GONE);
                         return;
                     }
 
                     // Step 2: program details from `programs` collection
-                    // assumes doc id in `programs` is exactly the programName (e.g. "Program F")
                     db.collection("programs")
                             .document(programName)
                             .get()
                             .addOnSuccessListener(programDoc -> {
                                 if (!programDoc.exists()) {
-                                    // no extra info, show name only
                                     tvUpcomingProgram.setText(programName);
+                                    btnSetReminder.setVisibility(View.VISIBLE);
                                     return;
                                 }
 
-                                // Try as Timestamp first
                                 Timestamp startTs = programDoc.getTimestamp("programStartTime");
 
                                 if (startTs != null) {
-                                    SimpleDateFormat sdf =
-                                            new SimpleDateFormat("dd/MM/yyyy HH:mm");
+                                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
                                     String timeStr = sdf.format(startTs.toDate());
                                     tvUpcomingProgram.setText(programName + " - " + timeStr);
+                                    btnSetReminder.setVisibility(View.VISIBLE);
                                 } else {
-                                    // Or as plain string (if admin stored it that way)
                                     String startStr = programDoc.getString("programStartTime");
                                     if (startStr != null && !startStr.isEmpty()) {
                                         tvUpcomingProgram.setText(programName + " - " + startStr);
+                                        btnSetReminder.setVisibility(View.VISIBLE);
                                     } else {
                                         tvUpcomingProgram.setText(programName);
+                                        btnSetReminder.setVisibility(View.VISIBLE);
                                     }
                                 }
                             })
-                            .addOnFailureListener(e ->
-                                    tvUpcomingProgram.setText("Failed to load program info"));
+                            .addOnFailureListener(e -> {
+                                tvUpcomingProgram.setText("Failed to load program info");
+                                btnSetReminder.setVisibility(View.GONE);
+                            });
                 })
-                .addOnFailureListener(e ->
-                        tvUpcomingProgram.setText("Failed to load joined program"));
+                .addOnFailureListener(e -> {
+                    tvUpcomingProgram.setText("Failed to load joined program");
+                    btnSetReminder.setVisibility(View.GONE);
+                });
     }
 
     public void openMap(View view) {
@@ -276,7 +328,6 @@ public class ProfileActivity extends AppCompatActivity {
                     scanData.put("name", fullName != null ? fullName : "");
                     scanData.put("phone", phone != null ? phone : "");
                     scanData.put("programName", programName);
-                    // Only scannedAt; programStartTime is stored in `programs` by admin
                     scanData.put("scannedAt", FieldValue.serverTimestamp());
 
                     String scanId = uid + "_" + programName;
@@ -315,5 +366,54 @@ public class ProfileActivity extends AppCompatActivity {
         Intent intent = new Intent(this, ResultActivity.class);
         intent.putExtra("result", programName);
         startActivity(intent);
+    }
+
+    // Show time picker dialog and then schedule alarm
+    private void showTimePickerDialog(String programName) {
+        Calendar now = Calendar.getInstance();
+        int hour = now.get(Calendar.HOUR_OF_DAY);
+        int minute = now.get(Calendar.MINUTE);
+
+        TimePickerDialog timePickerDialog = new TimePickerDialog(
+                this,
+                (TimePicker view, int hourOfDay, int minute1) -> {
+                    scheduleAlarm(hourOfDay, minute1, programName);
+                },
+                hour,
+                minute,
+                true);
+
+        timePickerDialog.show();
+    }
+
+    // Schedule alarm with unique requestCode based on programName hashCode
+    private void scheduleAlarm(int hourOfDay, int minute, String programName) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+        calendar.set(Calendar.MINUTE, minute);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+
+        // If the time is before now, schedule for next day
+        if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
+            calendar.add(Calendar.DAY_OF_YEAR, 1);
+        }
+
+        Intent intent = new Intent(this, AlarmReceiver.class);
+        intent.putExtra("programName", programName);
+
+        // Use programName hashCode as unique requestCode to allow multiple alarms
+        int requestCode = programName.hashCode();
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (alarmManager != null) {
+            alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
+
+            Toast.makeText(this, "Reminder set for " + String.format("%02d:%02d", hourOfDay, minute), Toast.LENGTH_SHORT).show();
+        }
     }
 }
