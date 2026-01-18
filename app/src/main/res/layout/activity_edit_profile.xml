@@ -11,7 +11,7 @@
         android:id="@+id/profileImageView"
         android:layout_width="160dp"
         android:layout_height="160dp"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="16dp"
         android:scaleType="centerCrop"
         android:background="@drawable/circle_background"
         android:src="@drawable/ic_default_profile" />
@@ -24,7 +24,6 @@
         android:textColor="#F4D186"
         android:textSize="16sp"
         android:textStyle="bold"
-        android:layout_marginTop="2dp"
         android:layout_marginBottom="10dp"
         android:gravity="center" />
 
@@ -32,13 +31,73 @@
         android:id="@+id/btnCamera"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Change from Camera"
-        android:layout_marginBottom="5dp" />
+        android:text="Change from Camera" />
 
     <Button
         android:id="@+id/btnGallery"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Change from Gallery" />
+        android:text="Change from Gallery"
+        android:layout_marginBottom="20dp" />
+
+    <!-- ===== Full Name ===== -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Full Name :"
+        android:textColor="#F4D186"
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp" />
+
+    <EditText
+        android:id="@+id/etFullName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:enabled="false"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#AAAAAA" />
+
+    <!-- ===== Email ===== -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Email :"
+        android:textColor="#F4D186"
+        android:textStyle="bold"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp" />
+
+    <EditText
+        android:id="@+id/etEmail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:enabled="false"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#AAAAAA" />
+
+    <!-- ===== Phone Number ===== -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Phone Number :"
+        android:textColor="#F4D186"
+        android:textStyle="bold"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp" />
+
+    <EditText
+        android:id="@+id/etPhone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="phone"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#AAAAAA" />
+
+    <Button
+        android:id="@+id/btnSave"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save"
+        android:layout_marginTop="24dp" />
 
 </LinearLayout>

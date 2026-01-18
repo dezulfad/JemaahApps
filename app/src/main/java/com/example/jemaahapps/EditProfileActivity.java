@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -18,6 +19,10 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,7 +35,14 @@ public class EditProfileActivity extends AppCompatActivity {
     private static final int REQUEST_STORAGE_PERMISSION = 400;
 
     private ImageView profileImageView;
-    private Button btnCamera, btnGallery;
+    private Button btnCamera, btnGallery, btnSave;
+    private EditText etFullName, etEmail, etPhone;
+
+    private FirebaseAuth mAuth;
+    private FirebaseFirestore db;
+
+    // ✅ Store original value for change detection
+    private String originalPhoneNumber = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,20 +52,109 @@ public class EditProfileActivity extends AppCompatActivity {
         profileImageView = findViewById(R.id.profileImageView);
         btnCamera = findViewById(R.id.btnCamera);
         btnGallery = findViewById(R.id.btnGallery);
+        btnSave = findViewById(R.id.btnSave);
 
-        // Load saved profile image if available
+        etFullName = findViewById(R.id.etFullName);
+        etEmail = findViewById(R.id.etEmail);
+        etPhone = findViewById(R.id.etPhone);
+
+        mAuth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+
+        loadUserProfile();
+        loadProfileImage();
+
+        btnCamera.setOnClickListener(v -> checkCameraPermissionAndOpen());
+        btnGallery.setOnClickListener(v -> checkStoragePermissionAndOpen());
+        btnSave.setOnClickListener(v -> savePhoneNumber());
+    }
+
+    /* ================= USER DATA ================= */
+
+    private void loadUserProfile() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) return;
+
+        db.collection("users").document(user.getUid())
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) return;
+
+                    String phone = doc.getString("phone");
+
+                    etFullName.setText(doc.getString("fullName"));
+                    etPhone.setText(phone);
+                    etEmail.setText(user.getEmail());
+
+                    // Save original phone
+                    originalPhoneNumber = phone;
+                });
+    }
+
+    private void savePhoneNumber() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user == null) return;
+
+        String newPhone = etPhone.getText().toString().trim();
+
+        if (newPhone.isEmpty()) {
+            etPhone.setError("Phone number cannot be empty");
+            etPhone.requestFocus();
+            return;
+        }
+
+        // ✅ No changes
+        if (newPhone.equals(originalPhoneNumber)) {
+            Toast.makeText(this,
+                    "No changes were detected. Your profile information remains unchanged.",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        db.collection("users")
+                .document(user.getUid())
+                .update("phone", newPhone)
+                .addOnSuccessListener(unused -> {
+                    originalPhoneNumber = newPhone;
+                    Toast.makeText(this,
+                            "Your profile has been successfully updated.",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this,
+                                "Unable to update profile at this time. Please try again later.",
+                                Toast.LENGTH_SHORT).show());
+    }
+
+    /* ================= PROFILE IMAGE ================= */
+
+    private void loadProfileImage() {
         String encodedImage = getSharedPreferences("user_profile", MODE_PRIVATE)
                 .getString("profile_image", null);
 
         if (encodedImage != null) {
             byte[] decodedBytes = Base64.decode(encodedImage, Base64.DEFAULT);
-            Bitmap decodedBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
-            profileImageView.setImageBitmap(decodedBitmap);
+            Bitmap bitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+            profileImageView.setImageBitmap(bitmap);
         }
-
-        btnCamera.setOnClickListener(v -> checkCameraPermissionAndOpen());
-        btnGallery.setOnClickListener(v -> checkStoragePermissionAndOpen());
     }
+
+    private void saveImageToPrefs(Bitmap bitmap) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+        String encodedImage = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
+
+        getSharedPreferences("user_profile", MODE_PRIVATE)
+                .edit()
+                .putString("profile_image", encodedImage)
+                .apply();
+
+        Toast.makeText(this,
+                "Your profile picture has been updated.",
+                Toast.LENGTH_SHORT).show();
+    }
+
+    /* ================= CAMERA & GALLERY ================= */
 
     private void checkCameraPermissionAndOpen() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -66,7 +167,7 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void checkStoragePermissionAndOpen() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
                     != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this,
@@ -74,7 +175,7 @@ public class EditProfileActivity extends AppCompatActivity {
             } else {
                 openGallery();
             }
-        } else { // Android <= 12
+        } else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this,
@@ -86,36 +187,17 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void openCamera() {
-        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (intent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(intent, REQUEST_CAMERA);
-        }
+        startActivityForResult(
+                new Intent(MediaStore.ACTION_IMAGE_CAPTURE),
+                REQUEST_CAMERA
+        );
     }
 
     private void openGallery() {
-        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        startActivityForResult(intent, REQUEST_GALLERY);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                openCamera();
-            } else {
-                Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
-            }
-        } else if (requestCode == REQUEST_STORAGE_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                openGallery();
-            } else {
-                Toast.makeText(this, "Storage permission denied", Toast.LENGTH_SHORT).show();
-            }
-        }
+        startActivityForResult(
+                new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI),
+                REQUEST_GALLERY
+        );
     }
 
     @Override
@@ -123,39 +205,25 @@ public class EditProfileActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (resultCode == RESULT_OK && data != null) {
+
             if (requestCode == REQUEST_CAMERA) {
                 Bitmap photo = (Bitmap) data.getExtras().get("data");
                 if (photo != null) {
                     profileImageView.setImageBitmap(photo);
                     saveImageToPrefs(photo);
                 }
+
             } else if (requestCode == REQUEST_GALLERY) {
-                Uri selectedImageUri = data.getData();
-                if (selectedImageUri != null) {
-                    try {
-                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImageUri);
-                        profileImageView.setImageBitmap(bitmap);
-                        saveImageToPrefs(bitmap);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
-                    }
+                Uri uri = data.getData();
+                try {
+                    Bitmap bitmap = MediaStore.Images.Media
+                            .getBitmap(getContentResolver(), uri);
+                    profileImageView.setImageBitmap(bitmap);
+                    saveImageToPrefs(bitmap);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
         }
-    }
-
-    private void saveImageToPrefs(Bitmap bitmap) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
-        byte[] imageBytes = baos.toByteArray();
-        String encodedImage = Base64.encodeToString(imageBytes, Base64.DEFAULT);
-
-        getSharedPreferences("user_profile", MODE_PRIVATE)
-                .edit()
-                .putString("profile_image", encodedImage)
-                .apply();
-
-        Toast.makeText(this, "Profile picture updated", Toast.LENGTH_SHORT).show();
     }
 }
