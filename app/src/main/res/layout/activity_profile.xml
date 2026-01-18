@@ -110,21 +110,18 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Search nearby mosque -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/button"
-                style="@style/Widget.MaterialComponents.Button"
+            <!-- Upcoming joined program -->
+            <TextView
+                android:id="@+id/tvScanTitle"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:text="Search Nearby Mosque"
-                android:onClick="openMap"
-                app:icon="@drawable/ic_mosque"
-                app:iconGravity="textStart"
-                app:iconPadding="8dp"
-                android:textAllCaps="false"
+                android:layout_height="wrap_content"
+                android:text="Scan To Join Program :"
+                android:textColor="#F4D186"
                 android:textSize="16sp"
-                android:textColor="@android:color/white"
-                android:backgroundTint="#0E8060" />
+                android:textStyle="bold"
+                android:layout_marginTop="2dp"
+                android:gravity="center" />
+
 
             <!-- Scan via camera -->
             <com.google.android.material.button.MaterialButton
@@ -154,9 +151,24 @@
                 app:iconPadding="8dp"
                 android:textAllCaps="false"
                 android:textSize="16sp"
-                android:layout_marginTop="8dp"
                 android:textColor="@android:color/white"
                 android:backgroundTint="#146F8C" />
+
+            <!-- Search nearby mosque -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/button"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Search Nearby Mosque"
+                android:onClick="openMap"
+                app:icon="@drawable/ic_mosque"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                android:textAllCaps="false"
+                android:textSize="16sp"
+                android:textColor="@android:color/white"
+                android:backgroundTint="#0E8060" />
 
             <!-- Upcoming joined program -->
             <TextView
@@ -208,7 +220,7 @@
         android:textSize="16sp"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="10dp"
         android:textColor="@android:color/white"
         android:backgroundTint="#C0392B"
         app:cornerRadius="26dp"
