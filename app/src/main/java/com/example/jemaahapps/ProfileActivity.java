@@ -8,11 +8,14 @@ import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
@@ -51,6 +54,7 @@ public class ProfileActivity extends AppCompatActivity {
     TextView profileText;
     TextView tvUpcomingProgram;
     Button openMap, cameraBtn, galleryBtn, btnSetReminder;
+    private ImageView profileImage;
 
     ActivityResultLauncher<Intent> galleryLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
@@ -73,6 +77,25 @@ public class ProfileActivity extends AppCompatActivity {
         cameraBtn = findViewById(R.id.cameraBtn);
         galleryBtn = findViewById(R.id.galleryBtn);
         btnSetReminder = findViewById(R.id.btnSetReminder);
+
+        // Initialize profile image view
+        profileImage = findViewById(R.id.profileImage);
+
+        // Load saved profile image from SharedPreferences if exists
+        String encodedImage = getSharedPreferences("user_profile", MODE_PRIVATE)
+                .getString("profile_image", null);
+
+        if (encodedImage != null) {
+            byte[] decodedBytes = Base64.decode(encodedImage, Base64.DEFAULT);
+            Bitmap decodedBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+            profileImage.setImageBitmap(decodedBitmap);
+        }
+
+        // Open EditProfileActivity on clicking profile image
+        profileImage.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
+            startActivity(intent);
+        });
 
         user = auth.getCurrentUser();
         if (profileText != null) {
@@ -131,6 +154,21 @@ public class ProfileActivity extends AppCompatActivity {
                 showDateTimePickerDialog(upcomingProgram);
             }
         });
+    }
+
+    // Reload profile image on resume to reflect changes
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        String encodedImage = getSharedPreferences("user_profile", MODE_PRIVATE)
+                .getString("profile_image", null);
+
+        if (encodedImage != null) {
+            byte[] decodedBytes = Base64.decode(encodedImage, Base64.DEFAULT);
+            Bitmap decodedBitmap = BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+            profileImage.setImageBitmap(decodedBitmap);
+        }
     }
 
     private void loadUpcomingProgram(String uid) {
