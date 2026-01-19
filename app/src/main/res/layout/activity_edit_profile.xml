@@ -62,8 +62,7 @@
                 android:layout_height="wrap_content"
                 android:text="Full Name :"
                 android:textColor="#F4D186"
-                android:textStyle="bold"
-                android:layout_marginBottom="4dp" />
+                android:textStyle="bold" />
 
             <EditText
                 android:id="@+id/etFullName"
@@ -79,8 +78,7 @@
                 android:text="Email :"
                 android:textColor="#F4D186"
                 android:textStyle="bold"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginTop="6dp" />
 
             <EditText
                 android:id="@+id/etEmail"
@@ -96,8 +94,7 @@
                 android:text="Phone Number :"
                 android:textColor="#F4D186"
                 android:textStyle="bold"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginTop="6dp" />
 
             <EditText
                 android:id="@+id/etPhone"

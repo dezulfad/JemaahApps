@@ -117,6 +117,41 @@
                     android:orientation="vertical"
                     android:padding="16dp">
 
+                    <!-- Upcoming joined program -->
+                    <TextView
+                        android:id="@+id/tvUpcomingTitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Upcoming joined program"
+                        android:textColor="#F4D186"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:layout_marginTop="15dp"
+                        android:gravity="center" />
+
+                    <TextView
+                        android:id="@+id/tvUpcomingProgram"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="No upcoming program"
+                        android:textColor="#F4F4F4"
+                        android:textSize="14sp"
+                        android:gravity="center"
+                        android:layout_marginTop="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSetReminder"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Set Reminder"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="20dp"
+                        android:visibility="gone"
+                        android:textAllCaps="false"
+                        android:textColor="@android:color/white"
+                        android:backgroundTint="#673AB7" />
+
                     <TextView
                         android:id="@+id/tvScanTitle"
                         android:layout_width="match_parent"
@@ -124,6 +159,7 @@
                         android:text="Scan To Join Program :"
                         android:textColor="#F4D186"
                         android:textSize="16sp"
+                        android:layout_marginTop="20dp"
                         android:textStyle="bold"
                         android:gravity="center" />
 
@@ -169,41 +205,6 @@
                         android:backgroundTint="?attr/colorPrimary"
                         android:textColor="@android:color/white" />
 
-                    <!-- Upcoming joined program -->
-                    <TextView
-                        android:id="@+id/tvUpcomingTitle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Upcoming joined program"
-                        android:textColor="#F4D186"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:layout_marginTop="15dp"
-                        android:gravity="center" />
-
-                    <TextView
-                        android:id="@+id/tvUpcomingProgram"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="No upcoming program"
-                        android:textColor="#F4F4F4"
-                        android:textSize="14sp"
-                        android:gravity="center"
-                        android:layout_marginTop="14dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnSetReminder"
-                        style="@style/Widget.MaterialComponents.Button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Set Reminder"
-                        android:layout_gravity="center"
-                        android:layout_marginTop="20dp"
-                        android:visibility="gone"
-                        android:textAllCaps="false"
-                        android:textColor="@android:color/white"
-                        android:backgroundTint="#673AB7" />
-
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -216,8 +217,8 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:background="#003838"
-        app:itemIconTint="@android:color/white"
-        app:itemTextColor="@android:color/white"
+        app:itemIconTint="@color/bottom_nav_selector"
+        app:itemTextColor="@color/bottom_nav_selector"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
