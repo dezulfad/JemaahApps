@@ -171,13 +171,21 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
+    // Class-level fields to track results:
+    private String nextProgramName = null;
+    private Date nextProgramDate = null;
+    private int processedCount = 0;
+    private int totalPrograms = 0;
+
     private void loadUpcomingProgram(String uid) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+        nextProgramName = null;
+        nextProgramDate = null;
+        processedCount = 0;
+
         db.collection("scans")
                 .whereEqualTo("userId", uid)
-                .orderBy("scannedAt", Query.Direction.DESCENDING)
-                .limit(1)
                 .get()
                 .addOnSuccessListener(scanSnap -> {
                     if (scanSnap.isEmpty()) {
@@ -186,29 +194,54 @@ public class ProfileActivity extends AppCompatActivity {
                         return;
                     }
 
-                    String programName = scanSnap.getDocuments().get(0).getString("programName");
+                    totalPrograms = scanSnap.size();
+                    Date now = new Date();
 
-                    db.collection("programs").document(programName).get()
-                            .addOnSuccessListener(programDoc -> {
-                                Timestamp ts = programDoc.getTimestamp("programStartTime");
-                                if (ts != null) {
-                                    Date programDate = ts.toDate();
-                                    Date now = new Date();
-                                    if (programDate.after(now)) {
-                                        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-                                        tvUpcomingProgram.setText(programName + " - " + sdf.format(programDate));
-                                        btnSetReminder.setVisibility(View.VISIBLE);
-                                    } else {
-                                        tvUpcomingProgram.setText("No upcoming program");
-                                        btnSetReminder.setVisibility(View.GONE);
+                    for (var doc : scanSnap) {
+                        String programName = doc.getString("programName");
+                        if (programName == null) {
+                            processedCount++;
+                            if (processedCount == totalPrograms) finishDisplay();
+                            continue;
+                        }
+
+                        db.collection("programs").document(programName).get()
+                                .addOnSuccessListener(programDoc -> {
+                                    Timestamp ts = programDoc.getTimestamp("programStartTime");
+                                    if (ts != null) {
+                                        Date programDate = ts.toDate();
+                                        if (programDate.after(now) &&
+                                                (nextProgramDate == null || programDate.before(nextProgramDate))) {
+                                            nextProgramDate = programDate;
+                                            nextProgramName = programName;
+                                        }
                                     }
-                                } else {
-                                    tvUpcomingProgram.setText(programName);
-                                    btnSetReminder.setVisibility(View.VISIBLE);
-                                }
-                            });
+                                    processedCount++;
+                                    if (processedCount == totalPrograms) finishDisplay();
+                                })
+                                .addOnFailureListener(e -> {
+                                    processedCount++;
+                                    if (processedCount == totalPrograms) finishDisplay();
+                                });
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    tvUpcomingProgram.setText("Failed to load programs");
+                    btnSetReminder.setVisibility(View.GONE);
                 });
     }
+
+    private void finishDisplay() {
+        if (nextProgramName != null && nextProgramDate != null) {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+            tvUpcomingProgram.setText(nextProgramName + " - " + sdf.format(nextProgramDate));
+            btnSetReminder.setVisibility(View.VISIBLE);
+        } else {
+            tvUpcomingProgram.setText("No upcoming program");
+            btnSetReminder.setVisibility(View.GONE);
+        }
+    }
+
 
     public void openMap(View view) {
         startActivity(new Intent(this, MapsActivity.class));
