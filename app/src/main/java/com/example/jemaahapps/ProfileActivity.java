@@ -80,6 +80,11 @@ public class ProfileActivity extends AppCompatActivity {
         galleryBtn = findViewById(R.id.galleryBtn);
         btnSetReminder = findViewById(R.id.btnSetReminder);
         profileImage = findViewById(R.id.profileImage);
+        Button btnViewPrograms = findViewById(R.id.btnViewPrograms);
+        btnViewPrograms.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, AvailableProgramsActivity.class);
+            startActivity(intent);
+        });
 
         // Add OnClickListener to the openMap button so it opens the MapsActivity when clicked
         openMap.setOnClickListener(v -> openMap(v));

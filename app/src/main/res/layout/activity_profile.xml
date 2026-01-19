@@ -149,6 +149,19 @@
                 android:textColor="@android:color/white"
                 android:backgroundTint="#0E8060" />
 
+            <Button
+                android:id="@+id/btnViewPrograms"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="View Available Programs"
+                android:padding="12dp"
+                android:backgroundTint="?attr/colorPrimary"
+                android:textColor="@android:color/white"
+                app:layout_constraintTop_toBottomOf="@id/tvUpcomingProgram"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+
             <!-- Upcoming joined program -->
             <TextView
                 android:id="@+id/tvUpcomingTitle"

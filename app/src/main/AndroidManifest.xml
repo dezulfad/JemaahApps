@@ -14,6 +14,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -24,6 +25,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.JemaahApps"
         tools:targetApi="31">
+        <activity
+            android:name=".AvailableProgramsActivity"
+            android:exported="false" />
 
         <receiver
             android:name=".AlarmReceiver"
@@ -32,11 +36,10 @@
         <activity
             android:name=".ResultActivity"
             android:exported="false" />
-
+        <activity android:name=".ScanActivity" />
         <activity android:name=".ScanActivity" />
         <activity android:name=".EditProfileActivity" />
         <activity android:name=".AdminProgramActivity" />
-
         <activity
             android:name=".AdminActivity"
             android:exported="false" />
