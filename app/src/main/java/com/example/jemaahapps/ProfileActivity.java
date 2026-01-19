@@ -212,7 +212,7 @@ public class ProfileActivity extends AppCompatActivity {
                     }
 
                     if (scanSnap == null || scanSnap.isEmpty()) {
-                        tvUpcomingProgram.setText("No upcoming program");
+                        tvUpcomingProgram.setText("No Upcoming Program For Now");
                         btnSetReminder.setVisibility(View.GONE);
                         return;
                     }
@@ -260,7 +260,7 @@ public class ProfileActivity extends AppCompatActivity {
             tvUpcomingProgram.setText(nextProgramName + "\n" + sdf.format(nextProgramDate));
             btnSetReminder.setVisibility(View.VISIBLE);
         } else {
-            tvUpcomingProgram.setText("No upcoming program");
+            tvUpcomingProgram.setText("No Upcoming Program For Now");
             btnSetReminder.setVisibility(View.GONE);
         }
     }
