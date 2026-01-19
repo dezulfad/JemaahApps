@@ -161,8 +161,11 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void loadProfileImage() {
+        if (mAuth.getCurrentUser() == null) return;
+        String uid = mAuth.getCurrentUser().getUid();
+
         String encodedImage = getSharedPreferences("user_profile", MODE_PRIVATE)
-                .getString("profile_image", null);
+                .getString("profile_image_" + uid, null);
 
         if (encodedImage != null) {
             byte[] decodedBytes = Base64.decode(encodedImage, Base64.DEFAULT);
@@ -172,13 +175,16 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void saveImageToPrefs(Bitmap bitmap) {
+        if (mAuth.getCurrentUser() == null) return;
+        String uid = mAuth.getCurrentUser().getUid();
+
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
         String encodedImage = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
 
         getSharedPreferences("user_profile", MODE_PRIVATE)
                 .edit()
-                .putString("profile_image", encodedImage)
+                .putString("profile_image_" + uid, encodedImage)
                 .apply();
 
         Toast.makeText(this,

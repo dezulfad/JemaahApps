@@ -34,7 +34,6 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.firestore.QuerySnapshot;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.MultiFormatReader;
 import com.google.zxing.Result;
@@ -119,13 +118,8 @@ public class ProfileActivity extends AppCompatActivity {
             return false;
         });
 
-        String encodedImage = getSharedPreferences("user_profile", MODE_PRIVATE)
-                .getString("profile_image", null);
-        if (encodedImage != null) {
-            byte[] decodedBytes = Base64.decode(encodedImage, Base64.DEFAULT);
-            profileImage.setImageBitmap(
-                    BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length));
-        }
+        // Load profile image for current user
+        loadProfileImage();
 
         profileImage.setOnClickListener(v ->
                 startActivity(new Intent(this, EditProfileActivity.class)));
@@ -171,13 +165,7 @@ public class ProfileActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        String encodedImage = getSharedPreferences("user_profile", MODE_PRIVATE)
-                .getString("profile_image", null);
-        if (encodedImage != null) {
-            byte[] decodedBytes = Base64.decode(encodedImage, Base64.DEFAULT);
-            profileImage.setImageBitmap(
-                    BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length));
-        }
+        loadProfileImage();
     }
 
     @Override
@@ -185,6 +173,21 @@ public class ProfileActivity extends AppCompatActivity {
         super.onDestroy();
         if (scansListener != null) {
             scansListener.remove();
+        }
+    }
+
+    private void loadProfileImage() {
+        user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        String uid = user.getUid();
+
+        String encodedImage = getSharedPreferences("user_profile", MODE_PRIVATE)
+                .getString("profile_image_" + uid, null);
+        if (encodedImage != null) {
+            byte[] decodedBytes = Base64.decode(encodedImage, Base64.DEFAULT);
+            profileImage.setImageBitmap(
+                    BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length));
         }
     }
 
