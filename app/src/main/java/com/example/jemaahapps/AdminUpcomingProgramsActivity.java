@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,6 +23,7 @@ import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -177,6 +179,8 @@ public class AdminUpcomingProgramsActivity extends AppCompatActivity {
                 intent.putExtra("programName", program.name);
                 startActivity(intent);
             });
+
+            holder.btnDelete.setOnClickListener(v -> deleteProgram(program));
         }
 
         @Override
@@ -187,14 +191,58 @@ public class AdminUpcomingProgramsActivity extends AppCompatActivity {
         class ProgramViewHolder extends RecyclerView.ViewHolder {
 
             TextView tvProgramName, tvProgramDate, tvParticipantCount;
+            Button btnDelete;
 
             public ProgramViewHolder(@NonNull View itemView) {
                 super(itemView);
                 tvProgramName = itemView.findViewById(R.id.tvProgramName);
                 tvProgramDate = itemView.findViewById(R.id.tvProgramDate);
                 tvParticipantCount = itemView.findViewById(R.id.tvParticipantCount);
+                btnDelete = itemView.findViewById(R.id.btnDelete);
             }
         }
+    }
+
+    private void deleteProgram(ProgramWithCount program) {
+        String programId = program.id;
+        String programName = program.name;
+
+        // Confirm deletion (optional)
+        // For brevity skipping dialog here; you can add if needed
+
+        // Start batch delete
+        WriteBatch batch = db.batch();
+
+        // Delete the program document
+        batch.delete(db.collection("programs").document(programId));
+
+        // Delete all scans where programName == program.name
+        db.collection("scans")
+                .whereEqualTo("programName", programName)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    for (QueryDocumentSnapshot doc : querySnapshot) {
+                        batch.delete(doc.getReference());
+                    }
+
+                    // Commit the batch after deleting scans
+                    batch.commit()
+                            .addOnSuccessListener(unused -> {
+                                Toast.makeText(AdminUpcomingProgramsActivity.this,
+                                        "Program and all related scans deleted",
+                                        Toast.LENGTH_SHORT).show();
+                            })
+                            .addOnFailureListener(e -> {
+                                Toast.makeText(AdminUpcomingProgramsActivity.this,
+                                        "Failed to delete program: " + e.getMessage(),
+                                        Toast.LENGTH_LONG).show();
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(AdminUpcomingProgramsActivity.this,
+                            "Failed to find scans to delete: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
     }
 
     static class ProgramWithCount {

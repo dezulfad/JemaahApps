@@ -33,7 +33,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.MultiFormatReader;
 import com.google.zxing.Result;
@@ -44,9 +45,9 @@ import com.journeyapps.barcodescanner.CaptureActivity;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Date;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -58,6 +59,9 @@ public class ProfileActivity extends AppCompatActivity {
     Button openMap, cameraBtn, galleryBtn, btnSetReminder;
     ImageView profileImage;
 
+    // Firestore listener for scans
+    private ListenerRegistration scansListener;
+
     ActivityResultLauncher<Intent> galleryLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
                     result -> {
@@ -65,6 +69,12 @@ public class ProfileActivity extends AppCompatActivity {
                             decodeFromGallery(result.getData().getData());
                         }
                     });
+
+    // Fields for upcoming program calculation
+    private String nextProgramName = null;
+    private Date nextProgramDate = null;
+    private int processedCount = 0;
+    private int totalPrograms = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,7 +96,7 @@ public class ProfileActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Add OnClickListener to the openMap button so it opens the MapsActivity when clicked
+        // Open MapsActivity on map button click
         openMap.setOnClickListener(v -> openMap(v));
 
         BottomNavigationView bottomNavigation = findViewById(R.id.bottomNavigation);
@@ -95,8 +105,7 @@ public class ProfileActivity extends AppCompatActivity {
         bottomNavigation.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_home) {
-                // Already in ProfileActivity which is your home screen
-                return true; // do nothing or optionally scroll to top
+                return true; // Already home
             } else if (id == R.id.nav_scan) {
                 startCameraScan();
                 return true;
@@ -132,7 +141,7 @@ public class ProfileActivity extends AppCompatActivity {
                         profileText.setText(fullName != null ? fullName : user.getEmail());
                     });
 
-            loadUpcomingProgram(uid);
+            loadUpcomingProgram(uid); // <-- LIVE listener here
         }
 
         ActivityCompat.requestPermissions(this,
@@ -171,11 +180,13 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
-    // Class-level fields to track results:
-    private String nextProgramName = null;
-    private Date nextProgramDate = null;
-    private int processedCount = 0;
-    private int totalPrograms = 0;
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (scansListener != null) {
+            scansListener.remove();
+        }
+    }
 
     private void loadUpcomingProgram(String uid) {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -184,17 +195,30 @@ public class ProfileActivity extends AppCompatActivity {
         nextProgramDate = null;
         processedCount = 0;
 
-        db.collection("scans")
+        if (scansListener != null) {
+            scansListener.remove();
+        }
+
+        scansListener = db.collection("scans")
                 .whereEqualTo("userId", uid)
-                .get()
-                .addOnSuccessListener(scanSnap -> {
-                    if (scanSnap.isEmpty()) {
+                .addSnapshotListener((scanSnap, error) -> {
+                    if (error != null) {
+                        tvUpcomingProgram.setText("Failed to load programs");
+                        btnSetReminder.setVisibility(View.GONE);
+                        return;
+                    }
+
+                    if (scanSnap == null || scanSnap.isEmpty()) {
                         tvUpcomingProgram.setText("No upcoming program");
                         btnSetReminder.setVisibility(View.GONE);
                         return;
                     }
 
+                    nextProgramName = null;
+                    nextProgramDate = null;
+                    processedCount = 0;
                     totalPrograms = scanSnap.size();
+
                     Date now = new Date();
 
                     for (var doc : scanSnap) {
@@ -224,10 +248,6 @@ public class ProfileActivity extends AppCompatActivity {
                                     if (processedCount == totalPrograms) finishDisplay();
                                 });
                     }
-                })
-                .addOnFailureListener(e -> {
-                    tvUpcomingProgram.setText("Failed to load programs");
-                    btnSetReminder.setVisibility(View.GONE);
                 });
     }
 
@@ -241,7 +261,6 @@ public class ProfileActivity extends AppCompatActivity {
             btnSetReminder.setVisibility(View.GONE);
         }
     }
-
 
     public void openMap(View view) {
         startActivity(new Intent(this, MapsActivity.class));
