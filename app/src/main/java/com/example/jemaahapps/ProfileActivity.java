@@ -254,7 +254,7 @@ public class ProfileActivity extends AppCompatActivity {
     private void finishDisplay() {
         if (nextProgramName != null && nextProgramDate != null) {
             SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-            tvUpcomingProgram.setText(nextProgramName + " - " + sdf.format(nextProgramDate));
+            tvUpcomingProgram.setText(nextProgramName + "\n" + sdf.format(nextProgramDate));
             btnSetReminder.setVisibility(View.VISIBLE);
         } else {
             tvUpcomingProgram.setText("No upcoming program");

@@ -1,5 +1,7 @@
 package com.example.jemaahapps;
 
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -27,6 +29,7 @@ import com.google.firebase.firestore.WriteBatch;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -181,6 +184,8 @@ public class AdminUpcomingProgramsActivity extends AppCompatActivity {
             });
 
             holder.btnDelete.setOnClickListener(v -> deleteProgram(program));
+
+            holder.btnEdit.setOnClickListener(v -> showEditDateTimeDialog(program, holder.tvProgramDate));
         }
 
         @Override
@@ -191,7 +196,7 @@ public class AdminUpcomingProgramsActivity extends AppCompatActivity {
         class ProgramViewHolder extends RecyclerView.ViewHolder {
 
             TextView tvProgramName, tvProgramDate, tvParticipantCount;
-            Button btnDelete;
+            Button btnDelete, btnEdit;
 
             public ProgramViewHolder(@NonNull View itemView) {
                 super(itemView);
@@ -199,6 +204,7 @@ public class AdminUpcomingProgramsActivity extends AppCompatActivity {
                 tvProgramDate = itemView.findViewById(R.id.tvProgramDate);
                 tvParticipantCount = itemView.findViewById(R.id.tvParticipantCount);
                 btnDelete = itemView.findViewById(R.id.btnDelete);
+                btnEdit = itemView.findViewById(R.id.btnEdit);
             }
         }
     }
@@ -207,16 +213,10 @@ public class AdminUpcomingProgramsActivity extends AppCompatActivity {
         String programId = program.id;
         String programName = program.name;
 
-        // Confirm deletion (optional)
-        // For brevity skipping dialog here; you can add if needed
-
-        // Start batch delete
         WriteBatch batch = db.batch();
 
-        // Delete the program document
         batch.delete(db.collection("programs").document(programId));
 
-        // Delete all scans where programName == program.name
         db.collection("scans")
                 .whereEqualTo("programName", programName)
                 .get()
@@ -224,24 +224,47 @@ public class AdminUpcomingProgramsActivity extends AppCompatActivity {
                     for (QueryDocumentSnapshot doc : querySnapshot) {
                         batch.delete(doc.getReference());
                     }
-
-                    // Commit the batch after deleting scans
                     batch.commit()
-                            .addOnSuccessListener(unused -> {
-                                Toast.makeText(AdminUpcomingProgramsActivity.this,
-                                        "Program and all related scans deleted",
-                                        Toast.LENGTH_SHORT).show();
-                            })
-                            .addOnFailureListener(e -> {
-                                Toast.makeText(AdminUpcomingProgramsActivity.this,
-                                        "Failed to delete program: " + e.getMessage(),
-                                        Toast.LENGTH_LONG).show();
-                            });
+                            .addOnSuccessListener(unused -> Toast.makeText(AdminUpcomingProgramsActivity.this,
+                                    "Program and related scans deleted", Toast.LENGTH_SHORT).show())
+                            .addOnFailureListener(e -> Toast.makeText(AdminUpcomingProgramsActivity.this,
+                                    "Failed to delete program: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                })
+                .addOnFailureListener(e -> Toast.makeText(AdminUpcomingProgramsActivity.this,
+                        "Failed to find scans to delete: " + e.getMessage(), Toast.LENGTH_LONG).show());
+    }
+
+    private void showEditDateTimeDialog(ProgramWithCount program, TextView tvProgramDate) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTime(program.startDate);
+
+        new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
+            calendar.set(year, month, dayOfMonth);
+
+            new TimePickerDialog(this, (timePicker, hourOfDay, minute) -> {
+                calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                calendar.set(Calendar.MINUTE, minute);
+                calendar.set(Calendar.SECOND, 0);
+                calendar.set(Calendar.MILLISECOND, 0);
+
+                Date newDate = calendar.getTime();
+                updateProgramDate(program, newDate, tvProgramDate);
+
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true).show();
+
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show();
+    }
+
+    private void updateProgramDate(ProgramWithCount program, Date newDate, TextView tvProgramDate) {
+        db.collection("programs").document(program.id)
+                .update("programStartTime", new Timestamp(newDate))
+                .addOnSuccessListener(unused -> {
+                    program.startDate = newDate;
+                    tvProgramDate.setText(sdf.format(newDate));
+                    Toast.makeText(this, "Program date updated", Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(AdminUpcomingProgramsActivity.this,
-                            "Failed to find scans to delete: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Failed to update program date: " + e.getMessage(), Toast.LENGTH_LONG).show();
                 });
     }
 
