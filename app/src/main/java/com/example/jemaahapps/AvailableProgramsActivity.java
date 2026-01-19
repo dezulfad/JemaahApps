@@ -150,8 +150,9 @@ public class AvailableProgramsActivity extends AppCompatActivity {
                 return;
             }
 
-            // Write join info to "scans" collection like in your ProfileActivity logic
-            // Document id can be userId + "_" + programId to prevent duplicate joins
+            FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+            // Check if already joined
             db.collection("scans").document(userId + "_" + program.id)
                     .get()
                     .addOnSuccessListener(documentSnapshot -> {
@@ -160,18 +161,31 @@ public class AvailableProgramsActivity extends AppCompatActivity {
                                     "You have already joined this program",
                                     Toast.LENGTH_SHORT).show();
                         } else {
-                            // Register the join
-                            db.collection("scans").document(userId + "_" + program.id)
-                                    .set(new HashMap<String, Object>() {{
-                                        put("userId", userId);
-                                        put("programName", program.name);
-                                        put("scannedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
-                                    }})
-                                    .addOnSuccessListener(unused -> Toast.makeText(AvailableProgramsActivity.this,
-                                            "Successfully joined program",
-                                            Toast.LENGTH_SHORT).show())
+                            // Fetch user profile info first
+                            db.collection("users").document(userId).get()
+                                    .addOnSuccessListener(userDoc -> {
+                                        String fullName = userDoc.getString("fullName");
+                                        String phone = userDoc.getString("phone");
+
+                                        HashMap<String, Object> scanData = new HashMap<>();
+                                        scanData.put("userId", userId);
+                                        scanData.put("programName", program.name);
+                                        scanData.put("scannedAt", com.google.firebase.firestore.FieldValue.serverTimestamp());
+                                        scanData.put("name", fullName != null ? fullName : "");
+                                        scanData.put("phone", phone != null ? phone : "");
+
+                                        // Save scan/join info with name and phone
+                                        db.collection("scans").document(userId + "_" + program.id)
+                                                .set(scanData)
+                                                .addOnSuccessListener(unused -> Toast.makeText(AvailableProgramsActivity.this,
+                                                        "Successfully joined program",
+                                                        Toast.LENGTH_SHORT).show())
+                                                .addOnFailureListener(e -> Toast.makeText(AvailableProgramsActivity.this,
+                                                        "Failed to join program: " + e.getMessage(),
+                                                        Toast.LENGTH_LONG).show());
+                                    })
                                     .addOnFailureListener(e -> Toast.makeText(AvailableProgramsActivity.this,
-                                            "Failed to join program: " + e.getMessage(),
+                                            "Failed to get user info: " + e.getMessage(),
                                             Toast.LENGTH_LONG).show());
                         }
                     })

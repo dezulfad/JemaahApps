@@ -296,9 +296,9 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
-    void openResultActivity(String content) {
-        String programName = content != null ? content.trim() : "";
-        if (programName.isEmpty()) return;
+    void openResultActivity(String programName) {
+        String trimmedProgramName = programName != null ? programName.trim() : "";
+        if (trimmedProgramName.isEmpty()) return;
 
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) return;
@@ -306,16 +306,32 @@ public class ProfileActivity extends AppCompatActivity {
         String uid = currentUser.getUid();
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        Map<String, Object> scanData = new HashMap<>();
-        scanData.put("userId", uid);
-        scanData.put("programName", programName);
-        scanData.put("scannedAt", FieldValue.serverTimestamp());
+        // Fetch user info before saving scan
+        db.collection("users").document(uid).get()
+                .addOnSuccessListener(userDoc -> {
+                    String fullName = userDoc.getString("fullName");
+                    String phone = userDoc.getString("phone");
 
-        db.collection("scans").document(uid + "_" + programName).set(scanData);
+                    Map<String, Object> scanData = new HashMap<>();
+                    scanData.put("userId", uid);
+                    scanData.put("programName", trimmedProgramName);
+                    scanData.put("scannedAt", FieldValue.serverTimestamp());
+                    scanData.put("name", fullName != null ? fullName : "");
+                    scanData.put("phone", phone != null ? phone : "");
 
-        Intent intent = new Intent(this, ResultActivity.class);
-        intent.putExtra("result", programName);
-        startActivity(intent);
+                    db.collection("scans").document(uid + "_" + trimmedProgramName).set(scanData)
+                            .addOnSuccessListener(unused -> {
+                                Intent intent = new Intent(this, ResultActivity.class);
+                                intent.putExtra("result", trimmedProgramName);
+                                startActivity(intent);
+                            })
+                            .addOnFailureListener(e -> {
+                                Toast.makeText(this, "Failed to save scan: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to get user info: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
     }
 
     private void showDateTimePickerDialog(String programName) {
