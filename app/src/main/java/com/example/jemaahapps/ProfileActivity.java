@@ -85,11 +85,14 @@ public class ProfileActivity extends AppCompatActivity {
         openMap.setOnClickListener(v -> openMap(v));
 
         BottomNavigationView bottomNavigation = findViewById(R.id.bottomNavigation);
-        bottomNavigation.setSelectedItemId(R.id.nav_profile);
+        bottomNavigation.setSelectedItemId(R.id.nav_home);
 
         bottomNavigation.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.nav_scan) {
+            if (id == R.id.nav_home) {
+                // Already in ProfileActivity which is your home screen
+                return true; // do nothing or optionally scroll to top
+            } else if (id == R.id.nav_scan) {
                 startCameraScan();
                 return true;
             } else if (id == R.id.nav_nearby) {

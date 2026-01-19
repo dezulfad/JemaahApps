@@ -76,7 +76,14 @@ public class EditProfileActivity extends AppCompatActivity {
         bottomNavigationView.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
 
-            if (id == R.id.nav_scan) {
+            if (id == R.id.nav_home) {
+                // Navigate to ProfileActivity
+                Intent homeIntent = new Intent(EditProfileActivity.this, ProfileActivity.class);
+                // Clear back stack so Home acts as a fresh start
+                homeIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(homeIntent);
+                return true;
+            } else if (id == R.id.nav_scan) {
                 // Launch ScanActivity for scanning
                 Intent scanIntent = new Intent(EditProfileActivity.this, ScanActivity.class);
                 startActivityForResult(scanIntent, SCAN_ACTIVITY_REQUEST_CODE);
@@ -86,11 +93,12 @@ public class EditProfileActivity extends AppCompatActivity {
                 startActivity(new Intent(EditProfileActivity.this, MapsActivity.class));
                 return true;
             } else if (id == R.id.nav_profile) {
-                // Already here
+                // Already on profile page
                 return true;
             }
             return false;
         });
+
     }
 
     private void signOutUser() {
