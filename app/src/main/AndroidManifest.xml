@@ -33,6 +33,7 @@
             android:name=".ResultActivity"
             android:exported="false" />
 
+        <activity android:name=".ScanActivity" />
         <activity android:name=".EditProfileActivity" />
         <activity android:name=".AdminProgramActivity" />
 
