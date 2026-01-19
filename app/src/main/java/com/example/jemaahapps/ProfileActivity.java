@@ -81,6 +81,9 @@ public class ProfileActivity extends AppCompatActivity {
         btnSetReminder = findViewById(R.id.btnSetReminder);
         profileImage = findViewById(R.id.profileImage);
 
+        // Add OnClickListener to the openMap button so it opens the MapsActivity when clicked
+        openMap.setOnClickListener(v -> openMap(v));
+
         BottomNavigationView bottomNavigation = findViewById(R.id.bottomNavigation);
         bottomNavigation.setSelectedItemId(R.id.nav_profile);
 
