@@ -26,6 +26,12 @@
         android:theme="@style/Theme.JemaahApps"
         tools:targetApi="31">
         <activity
+            android:name=".ParticipantDetailsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AdminUpcomingProgramsActivity"
+            android:exported="false" />
+        <activity
             android:name=".AvailableProgramsActivity"
             android:exported="false" />
 

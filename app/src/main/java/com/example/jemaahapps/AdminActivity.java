@@ -26,7 +26,6 @@ import java.util.Map;
 
 public class AdminActivity extends AppCompatActivity {
 
-    private RecyclerView rvScans;
     private FirebaseFirestore db;
     private ListenerRegistration scansListener;
 
@@ -36,22 +35,27 @@ public class AdminActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_admin);
 
+        // Adjust for system bars
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.adminRoot), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
-        rvScans = findViewById(R.id.rvScans);
-        rvScans.setLayoutManager(new LinearLayoutManager(this));
-
         db = FirebaseFirestore.getInstance();
 
-        // Button that opens AdminProgramActivity to add/manage programs
+        // Manage Programs Button
         Button btnManagePrograms = findViewById(R.id.btnManagePrograms);
         btnManagePrograms.setOnClickListener(v -> {
             Intent i = new Intent(AdminActivity.this, AdminProgramActivity.class);
             startActivity(i);
+        });
+
+        // View Upcoming Programs Button
+        Button btnViewUpcomingPrograms = findViewById(R.id.btnViewUpcomingPrograms);
+        btnViewUpcomingPrograms.setOnClickListener(v -> {
+            Intent intent = new Intent(AdminActivity.this, AdminUpcomingProgramsActivity.class);
+            startActivity(intent);
         });
     }
 
@@ -71,7 +75,6 @@ public class AdminActivity extends AppCompatActivity {
     }
 
     private void startListeningForScans() {
-        // remove previous listener if any
         if (scansListener != null) {
             scansListener.remove();
         }
@@ -87,7 +90,6 @@ public class AdminActivity extends AppCompatActivity {
                     }
                     if (querySnapshot == null) return;
 
-                    // Step 1: convert docs to ScanItem list
                     List<ScanItem> items = new ArrayList<>();
                     for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
                         String name = doc.getString("name");
@@ -101,7 +103,6 @@ public class AdminActivity extends AppCompatActivity {
                         ));
                     }
 
-                    // Step 2: group by programName
                     Map<String, List<ScanItem>> grouped = new LinkedHashMap<>();
                     for (ScanItem item : items) {
                         String key = item.getProgramName();
@@ -111,33 +112,25 @@ public class AdminActivity extends AppCompatActivity {
                         grouped.get(key).add(item);
                     }
 
-                    // Step 3: build rows (header + items)
                     List<ScanRow> rows = new ArrayList<>();
                     for (Map.Entry<String, List<ScanItem>> entry : grouped.entrySet()) {
                         String program = entry.getKey();
                         int count = entry.getValue().size();
 
-                        // Build header label: "Program A - 10 people"
-                        String headerLabel;
-                        if (count == 1) {
-                            headerLabel = program + " - 1 person";
-                        } else {
-                            headerLabel = program + " - " + count + " people";
-                        }
+                        String headerLabel = count == 1 ?
+                                program + " - 1 person" :
+                                program + " - " + count + " people";
 
-                        rows.add(ScanRow.header(headerLabel)); // header row with count
-
+                        rows.add(ScanRow.header(headerLabel));
                         for (ScanItem si : entry.getValue()) {
-                            rows.add(ScanRow.item(si.getName(), si.getPhone())); // child rows
+                            rows.add(ScanRow.item(si.getName(), si.getPhone()));
                         }
                     }
 
-                    rvScans.setAdapter(new ScanGroupedAdapter(rows));
                 });
     }
 
     public void logoutAdmin(View v) {
-        // stop listening first
         if (scansListener != null) {
             scansListener.remove();
             scansListener = null;
