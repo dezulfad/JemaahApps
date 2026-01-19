@@ -46,6 +46,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Date;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -180,12 +181,20 @@ public class ProfileActivity extends AppCompatActivity {
                             .addOnSuccessListener(programDoc -> {
                                 Timestamp ts = programDoc.getTimestamp("programStartTime");
                                 if (ts != null) {
-                                    SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-                                    tvUpcomingProgram.setText(programName + " - " + sdf.format(ts.toDate()));
+                                    Date programDate = ts.toDate();
+                                    Date now = new Date();
+                                    if (programDate.after(now)) {
+                                        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+                                        tvUpcomingProgram.setText(programName + " - " + sdf.format(programDate));
+                                        btnSetReminder.setVisibility(View.VISIBLE);
+                                    } else {
+                                        tvUpcomingProgram.setText("No upcoming program");
+                                        btnSetReminder.setVisibility(View.GONE);
+                                    }
                                 } else {
                                     tvUpcomingProgram.setText(programName);
+                                    btnSetReminder.setVisibility(View.VISIBLE);
                                 }
-                                btnSetReminder.setVisibility(View.VISIBLE);
                             });
                 });
     }
